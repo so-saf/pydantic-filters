@@ -1,0 +1,31 @@
+line-length = 120
+unsafe-fixes = true
+
+preview = true
+ 
+[lint]
+select = ["A", "ANN", "ARG", "C", "COM", "E", "F", "I", "ICN", "TCH", "T20", "W"]
+
+exclude = [
+    "**/tests/*",
+]
+
+ignore = [
+    "ANN101",
+    "ANN102",
+    "ANN401",
+]
+
+fixable = [
+    "COM",
+    "I",
+    "W2",
+    "W3",
+]
+ 
+
+[lint.extend-per-file-ignores]
+"__init__.py" = [
+    "E402",
+    "F401",
+]

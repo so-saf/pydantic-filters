@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "pydantic-filters"
+version = "0.3.0"
+description = ""
+authors = ["Nureev Insaf <uneenymain@gmail.com>"]
+readme = "README.md"
+
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+pydantic = "^2"
+
+
+[tool.poetry.group.dev.dependencies]
+sqlalchemy = ">1.4,<3"
+ruff = ">=0.4"
+fastapi = {extras = ["standard"], version = "^0.111.0"}
+pytest = "^8.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
