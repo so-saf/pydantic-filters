@@ -63,8 +63,8 @@ Next, you need to apply a filter to some query:
 from sqlalchemy import select
 from pydantic_filters.drivers.sqlalchemy import append_filter_to_statement
 
-statement = select(User),
-filter_ = UserFilter(name__ilike="kate", age__lt=23),
+statement = select(User)
+filter_ = UserFilter(name__ilike="kate", age__lt=23)
 
 stmt = append_filter_to_statement(
     statement=statement, model=User, filter_=filter_,
