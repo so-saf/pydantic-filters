@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pydantic-filters"
-version = "0.3.0"
+version = "0.0.0"
 description = ""
 authors = ["Nureev Insaf <uneenymain@gmail.com>"]
 readme = "README.md"
@@ -16,7 +16,18 @@ sqlalchemy = ">1.4,<3"
 ruff = ">=0.4"
 fastapi = {extras = ["standard"], version = "^0.111.0"}
 pytest = "^8.2.2"
+coverage = {extras = ["toml"], version = "^7.6.1"}
+pytest-cov = "^5.0.0"
+covdefaults = "^2.3.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+
+[tool.coverage.run]
+plugins = ["covdefaults"]
+source = ["pydantic_filters"]
