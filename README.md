@@ -1,11 +1,13 @@
 
 # pydantic-filters
 
-**Source Code:** https://github.com/so-saf/pydantic-filters
-
 [![Testing](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml/badge.svg)](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml)
+[![Coverage](https://codecov.io/gh/so-saf/pydantic-filters/branch/main/graph/badge.svg)](https://codecov.io/gh/so-saf/pydantic-filters)
+[![pypi](https://img.shields.io/pypi/v/pydantic-filters.svg)](https://pypi.python.org/pypi/pydantic-filters)
 [![license](https://img.shields.io/github/license/so-saf/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters/blob/main/LICENSE)
-[![Linting](https://github.com/so-saf/pydantic-filters/actions/workflows/linting.yaml/badge.svg)](https://github.com/so-saf/pydantic-filters/actions/workflows/linting.yaml)
+[![versions](https://img.shields.io/pypi/pyversions/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters)
+
+**Source Code:** https://github.com/so-saf/pydantic-filters
 
 ---
 
@@ -17,10 +19,16 @@ You can use the basic features without being attached to specific frameworks,
 or use one of the supported plugins and drivers:
  
 Plugins:
-* FastAPI >= 0.111.0
+* FastAPI >= 0.100.0
 
 Drivers: 
 * SQLAlchemy >= 2
+
+## Installation
+
+```shell
+pip install pydantic-filters
+```
 
 # A Simple Example
 

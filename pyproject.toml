@@ -14,7 +14,7 @@ pydantic = "^2"
 [tool.poetry.group.dev.dependencies]
 sqlalchemy = ">1.4,<3"
 ruff = ">=0.4"
-fastapi = {extras = ["standard"], version = "^0.111.0"}
+fastapi = {extras = ["standard"], version = ">=0.100.0"}
 pytest = "^8.2.2"
 coverage = {extras = ["toml"], version = "^7.6.1"}
 pytest-cov = "^5.0.0"
