@@ -3,6 +3,10 @@
 
 **Source Code:** https://github.com/so-saf/pydantic-filters
 
+[![Testing](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml/badge.svg)](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml)
+[![license](https://img.shields.io/github/license/so-saf/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters/blob/main/LICENSE)
+[![Linting](https://github.com/so-saf/pydantic-filters/actions/workflows/linting.yaml/badge.svg)](https://github.com/so-saf/pydantic-filters/actions/workflows/linting.yaml)
+
 ---
 
 Describe the filters, not implement them! 

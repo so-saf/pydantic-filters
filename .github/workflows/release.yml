@@ -1,0 +1,51 @@
+---
+name: Release
+
+# yamllint disable-line rule:truthy
+on:
+  release:
+    types:
+      - published
+
+env:
+  DEFAULT_PYTHON: "3.12"
+
+jobs:
+  release:
+    name: Releasing to PyPi
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+      url: https://pypi.org/p/pydantic-filters
+    permissions:
+      id-token: write
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4.1.6
+      - name: Set up Poetry
+        run: pipx install poetry
+      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+        id: python
+        uses: actions/setup-python@v5.1.0
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: "poetry"
+      - name: Install workflow dependencies
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Set package version
+        run: |
+          version="${{ github.event.release.tag_name }}"
+          version="${version,,}"
+          version="${version#v}"
+          poetry version --no-interaction "${version}"
+      - name: Build package
+        run: poetry build --no-interaction
+      - name: Publish to PyPi
+        uses: pypa/gh-action-pypi-publish@v1.8.14
+        with:
+          verbose: true
+          print-hash: true
