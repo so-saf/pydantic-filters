@@ -73,7 +73,7 @@ stmt = append_filter_to_statement(
 
 And get something like:
 
-```postgresql
+```sql
 SELECT users.id, users.name, users.age 
 FROM users 
 WHERE users.name ILIKE 'kate' AND users.age < 23
