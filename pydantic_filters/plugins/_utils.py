@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Callable, Dict, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, Type, TypeVar
 
 from pydantic_filters.filter._base import BaseFilter
 
@@ -31,8 +31,7 @@ def squash_filter(
         filter_: Type[_Filter],
         prefix: str,
         delimiter: str,
-        converter: Callable[["FieldInfo"], _T],
-) -> Dict[str, _T]:
+) -> Dict[str, "FieldInfo"]:
     """
     **Example:**
 
@@ -44,15 +43,15 @@ def squash_filter(
     >>> class MyFilter(BaseFilter):
     ...    a: int
     ...    b: NestedFilter
-    >>> squash_filter(MyFilter, "", "__", lambda f: None)
-    {"a": None, "b__c": None, "b__d__e": None}
+    >>> squash_filter(MyFilter, "", "__")
+    {"a": ..., "b__c": ..., "b__d__e": ...}
     """
 
     squashed = {}
 
     for key in chain(filter_.filter_fields, filter_.search_fields):
         field_info = filter_.model_fields[key]
-        squashed[add_prefix(key, prefix, delimiter)] = converter(field_info)
+        squashed[add_prefix(key, prefix, delimiter)] = field_info
 
     for key, nested_filter in filter_.nested_filters.items():
         squashed.update(
@@ -60,7 +59,6 @@ def squash_filter(
                 filter_=nested_filter,
                 prefix=add_prefix(key, prefix, delimiter),
                 delimiter=delimiter,
-                converter=converter,
             ),
         )
 

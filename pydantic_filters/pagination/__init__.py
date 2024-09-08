@@ -1,1 +1,5 @@
-from .base import BasePagination
+from ._base import (
+    OffsetPagination,
+    PagePagination,
+    PaginationInterface,
+)

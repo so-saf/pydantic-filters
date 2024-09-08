@@ -5,7 +5,14 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.dialects.sqlite import dialect as sa_sqlite_dialect
 
-from pydantic_filters import BaseFilter, BasePagination, BaseSort, SortByOrder
+from pydantic_filters import (
+    BaseFilter, 
+    OffsetPagination, 
+    BaseSort, 
+    SortByOrder, 
+    PaginationInterface, 
+    PagePagination,
+)
 from pydantic_filters.drivers.sqlalchemy._main import (
     append_filter_to_statement,
     append_pagination_to_statement,
@@ -67,15 +74,13 @@ def test_append_filter_to_statement() -> None:
 @pytest.mark.parametrize(
     "pagination, expected_stmt",
     [
-        (BasePagination(),
-         "SELECT a.id, a.b_id FROM a"),
-        (BasePagination(limit=10),
-         "SELECT a.id, a.b_id FROM a LIMIT 10 OFFSET 0"),
-        (BasePagination(limit=10, offset=20),
-         "SELECT a.id, a.b_id FROM a LIMIT 10 OFFSET 20"),
+        (OffsetPagination(limit=10), "SELECT a.id, a.b_id FROM a LIMIT 10 OFFSET 0"),
+        (OffsetPagination(limit=10, offset=20), "SELECT a.id, a.b_id FROM a LIMIT 10 OFFSET 20"),
+        (PagePagination(page=1, per_page=10), "SELECT a.id, a.b_id FROM a LIMIT 10 OFFSET 0"),
+        (PagePagination(page=10, per_page=10), "SELECT a.id, a.b_id FROM a LIMIT 10 OFFSET 90"),
     ]
 )
-def test_append_pagination_to_statement(pagination: BasePagination, expected_stmt: str) -> None:
+def test_append_pagination_to_statement(pagination: PaginationInterface, expected_stmt: str) -> None:
     stmt = append_pagination_to_statement(
         statement=sa.select(AModel),
         pagination=pagination,
@@ -109,7 +114,7 @@ def test_append_to_statement() -> None:
         statement=sa.select(AModel),
         model=AModel,
         filter_=AFilter(id=1, b=BFilter(id=2)),
-        pagination=BasePagination(limit=10, offset=20),
+        pagination=OffsetPagination(limit=10, offset=20),
         sort=BaseSort(sort_by="id", sort_by_order=SortByOrder.desc)
     )
     expected_stmt = (
