@@ -4,6 +4,11 @@ version = "0.0.0"
 description = ""
 authors = ["Nureev Insaf <uneenymain@gmail.com>"]
 readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/so-saf/pydantic-filters"
+repository = "https://github.com/so-saf/pydantic-filters"
+documentation = "https://github.com/so-saf/pydantic-filters"
+keywords = ["pydantic", "sqlalchemy", "fastapi"]
 
 
 [tool.poetry.dependencies]
