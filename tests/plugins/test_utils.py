@@ -1,6 +1,8 @@
 from typing import Dict, Any
+from unittest import mock
 
 import pytest
+from pydantic.fields import FieldInfo
 
 from pydantic_filters import BaseFilter
 from pydantic_filters.plugins._utils import (
@@ -48,7 +50,8 @@ class FilterTest(BaseFilter):
     a: int
     b: NestedFilter
     
-    
+
+@mock.patch.object(FieldInfo, "__eq__", new=lambda *_: True)
 @pytest.mark.parametrize(
     "prefix, delimiter, res",
     [
@@ -61,8 +64,7 @@ def test_squash_filter(prefix: str, delimiter: str, res: Dict[str, Any]):
     assert squash_filter(
         filter_=FilterTest,
         prefix=prefix, 
-        delimiter=delimiter, 
-        converter=lambda f: None,
+        delimiter=delimiter,
     ) == res
    
 

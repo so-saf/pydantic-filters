@@ -5,8 +5,8 @@ import sqlalchemy.orm as so
 
 from pydantic_filters import (
     BaseFilter,
-    BasePagination,
     BaseSort,
+    PaginationInterface,
     SortByOrder,
 )
 
@@ -14,7 +14,7 @@ from ._exceptions import AttributeNotFoundSaDriverError
 from ._mapping import filter_to_column_clauses, filter_to_column_options
 
 _Filter = TypeVar("_Filter", bound=BaseFilter)
-_Pagination = TypeVar("_Pagination", bound=BasePagination)
+_Pagination = TypeVar("_Pagination", bound=PaginationInterface)
 _Sort = TypeVar("_Sort", bound=BaseSort)
 _Model = TypeVar("_Model", bound=so.DeclarativeBase)
 _T = TypeVar("_T")
@@ -41,14 +41,11 @@ def append_pagination_to_statement(
         pagination: _Pagination,
 ) -> sa.Select[_T]:
 
-    if pagination.limit is not None:
-        statement = (
-            statement
-            .limit(pagination.limit)
-            .offset(pagination.offset)
-        )
-
-    return statement
+    return (
+        statement
+        .limit(pagination.get_limit())
+        .offset(pagination.get_offset())
+    )
 
 
 def append_sort_to_statement(

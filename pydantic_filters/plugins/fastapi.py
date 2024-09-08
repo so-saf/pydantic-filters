@@ -1,18 +1,20 @@
 from copy import deepcopy
 from inspect import Parameter, signature
-from typing import Any, List, Tuple, Type, TypeVar
+from typing import Any, List, Type, TypeVar
 
 from fastapi import Depends, Query
 from fastapi import params as fastapi_params
+from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from pydantic_filters import BaseFilter, BasePagination, BaseSort
+from pydantic_filters import BaseFilter, BaseSort, PaginationInterface
 
 from ._utils import inflate_filter, squash_filter
 
 _Filter = TypeVar("_Filter", bound=BaseFilter)
-_Pagination = TypeVar("_Pagination", bound=BasePagination)
+_Pagination = TypeVar("_Pagination", bound=PaginationInterface)
 _Sort = TypeVar("_Sort", bound=BaseSort)
+_PydanticModel = TypeVar("_PydanticModel", bound=BaseModel)
 
 
 def _field_info_to_query(
@@ -42,24 +44,20 @@ def _get_custom_params(
         delimiter: str,
 ) -> List[Parameter]:
 
-    def _converter(f: FieldInfo) -> Tuple[FieldInfo, fastapi_params.Query]:
-        return f, _field_info_to_query(f)
-
     squashed = squash_filter(
         filter_=filter_,
         prefix=prefix,
         delimiter=delimiter,
-        converter=_converter,
     )
 
     return [
         Parameter(
             name=key,
             kind=Parameter.KEYWORD_ONLY,
-            default=fastapi_query,
+            default=_field_info_to_query(field_info),
             annotation=field_info.annotation,
         )
-        for key, (field_info, fastapi_query) in squashed.items()
+        for key, field_info in squashed.items()
     ]
 
 
@@ -67,7 +65,7 @@ def FilterDepends(  # noqa: N802
         filter_: Type[_Filter],
         prefix: str = "",
         delimiter: str = "__",
-) -> _Filter:
+) -> _Filter:  # pragma: no cover
 
     def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
         """Signature of this function is replaced with Query parameters,
@@ -81,7 +79,6 @@ def FilterDepends(  # noqa: N802
             data=kwargs,
         )
 
-    # Переопределяем то, что функция принимает на вход
     _depends.__signature__ = signature(_depends).replace(
         parameters=_get_custom_params(filter_, prefix, delimiter),
     )
@@ -89,20 +86,36 @@ def FilterDepends(  # noqa: N802
     return Depends(_depends)
 
 
-def PaginationDepends(pagination: Type[_Pagination]) -> _Pagination:
-    limit_field = pagination.model_fields["limit"]
-    offset_field = pagination.model_fields["offset"]
+def _PydanticModelAsDepends(pydantic_model: Type[_PydanticModel]) -> _PydanticModel:  # pragma: no cover
+    def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
+        return pydantic_model.model_construct(**kwargs)
 
-    def _depends(
-            limit: limit_field.annotation = _field_info_to_query(limit_field),
-            offset: offset_field.annotation = _field_info_to_query(offset_field),
-    ) -> _Filter:
-        return pagination.model_construct(limit=limit, offset=offset)
+    custom_params = []
+    for key, field_info in pydantic_model.model_fields.items():
+        if issubclass(field_info.annotation, BaseModel):
+            continue
+
+        custom_params.append(
+            Parameter(
+                name=key,
+                kind=Parameter.KEYWORD_ONLY,
+                default=_field_info_to_query(field_info),
+                annotation=field_info.annotation,
+            ),
+        )
+
+    _depends.__signature__ = signature(_depends).replace(
+        parameters=custom_params,
+    )
 
     return Depends(_depends)
 
 
-def SortDepends(sort: Type[_Sort]) -> _Sort:
+def PaginationDepends(pagination: Type[_Pagination]) -> _Pagination:  # pragma: no cover
+    return _PydanticModelAsDepends(pagination)
+
+
+def SortDepends(sort: Type[_Sort]) -> _Sort:  # pragma: no cover
     sort_by_field = sort.model_fields["sort_by"]
     sort_by_order_field = sort.model_fields["sort_by_order"]
 

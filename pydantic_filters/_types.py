@@ -9,14 +9,14 @@ __all__ = (
 
 from typing_extensions import TypeAlias, Union
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 10):  # pragma: no cover
     from types import NoneType
-else:
+else:  # pragma: no cover
     NoneType = type(None)
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 9):  # pragma: no cover
     from types import GenericAlias
-else:
+else:  # pragma: no cover
     GenericAlias = type(List[int])
 
 
