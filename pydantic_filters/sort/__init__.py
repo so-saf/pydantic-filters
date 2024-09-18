@@ -1,2 +1,2 @@
-from .base import BaseSort
-from .misc import SortByOrder
+from ._base import BaseSort
+from ._types import SortByOrder

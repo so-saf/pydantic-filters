@@ -54,7 +54,7 @@ def append_sort_to_statement(
         sort: _Sort,
 ) -> sa.Select[_T]:
 
-    if sort.sort_by is None or sort.sort_by_order is None:
+    if sort.sort_by is None:
         return statement
 
     try:
