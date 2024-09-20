@@ -1,10 +1,14 @@
-from typing import List
+from typing import List, Type
 
 import pytest
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from pydantic_filters import BaseFilter, SearchField, SearchType
+from pydantic_filters.drivers.sqlalchemy._exceptions import (
+    AttributeNotFoundSaDriverError,
+    RelationshipNotFoundSaDriverError,
+)
 from pydantic_filters.drivers.sqlalchemy._mapping import (
     filter_to_column_clauses,
     filter_to_join_targets,
@@ -50,12 +54,15 @@ class FilterTest(BaseFilter):
     name: str
     name__null: bool
     name__n: List[str]
+    biba: str
 
     q1: str = SearchField(target=["name"])
     q2: List[str] = SearchField(target=["name"], type_=SearchType.case_sensitive)
+    q3: str = SearchField(target=["boba"])
 
     b: BFilter
     c: CFilter
+    d: CFilter
 
 
 @pytest.mark.parametrize(
@@ -73,18 +80,41 @@ class FilterTest(BaseFilter):
 def test_filter_to_column_clauses(filter_: BaseFilter, res_clause: sa.BinaryExpression[bool]) -> None:
     clauses = filter_to_column_clauses(filter_=filter_, model=AModel)
     assert clauses[0].compare(res_clause)
+    
+    
+@pytest.mark.parametrize(
+    "filter_, exception",
+    [
+        (FilterTest(biba="biba"), AttributeNotFoundSaDriverError),
+        (FilterTest(q3="boba"), AttributeNotFoundSaDriverError),
+    ]
+)
+def test_filter_to_column_clauses_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+    with pytest.raises(exception):
+        filter_to_column_clauses(filter_=filter_, model=AModel)
 
 
 @pytest.mark.parametrize(
     "filter_, res_join_params",
     [
         (
-                FilterTest(b=BFilter(id=1)),
-                JoinParams(target=BModel, on_clause=sa.and_(BModel.id == AModel.b_id, BModel.id == 1)),
+            FilterTest(b=BFilter(id=1)),
+            JoinParams(target=BModel, on_clause=sa.and_(BModel.id == AModel.b_id, BModel.id == 1)),
         ),
     ],
 )
-def test_filter_to_column_options(filter_: BaseFilter, res_join_params: JoinParams) -> None:
+def test_filter_to_join_targets(filter_: BaseFilter, res_join_params: JoinParams) -> None:
     joint_targets = filter_to_join_targets(filter_, AModel)
     assert joint_targets[0].target == res_join_params.target
     assert joint_targets[0].on_clause.compare(res_join_params.on_clause)
+
+
+@pytest.mark.parametrize(
+    "filter_, exception",
+    [
+        (FilterTest(d=CFilter(id=1)), RelationshipNotFoundSaDriverError),
+    ],
+)
+def test_filter_to_join_targets_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+    with pytest.raises(exception):
+        filter_to_join_targets(filter_, AModel)

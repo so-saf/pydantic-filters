@@ -1,4 +1,5 @@
 import re
+from typing import Type
 
 import pytest
 import sqlalchemy as sa
@@ -12,6 +13,10 @@ from pydantic_filters import (
     SortByOrder, 
     PaginationInterface, 
     PagePagination,
+)
+from pydantic_filters.drivers.sqlalchemy._exceptions import (
+    AttributeNotFoundSaDriverError,
+    SupportSaDriverError,
 )
 from pydantic_filters.drivers.sqlalchemy._main import (
     append_filter_to_statement,
@@ -39,6 +44,16 @@ class AModel(Base):
     b_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(BModel.id))
     
     b: so.Mapped[BModel] = so.relationship()
+    
+    
+class ABModel(Base):
+    __tablename__ = "ab"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("a_id", "b_id"),
+    )
+    
+    a_id: so.Mapped[int]
+    b_id: so.Mapped[int]
 
 
 class BFilter(BaseFilter):
@@ -92,6 +107,8 @@ def test_append_pagination_to_statement(pagination: PaginationInterface, expecte
 @pytest.mark.parametrize(
     "sort, expected_stmt",
     [
+        (BaseSort(), 
+         "SELECT a.id, a.b_id FROM a"),
         (BaseSort(sort_by="id"),
          "SELECT a.id, a.b_id FROM a ORDER BY a.id ASC"),
         (BaseSort(sort_by="id", sort_by_order=SortByOrder.desc),
@@ -108,6 +125,24 @@ def test_append_sort_to_statement(
         sort=sort,
     )
     assert compile_statement(stmt) == expected_stmt
+    
+    
+@pytest.mark.parametrize(
+    "sort, exception",
+    [
+        (BaseSort(sort_by="biba"), AttributeNotFoundSaDriverError)
+    ],
+)
+def test_append_sort_to_statement_raises( 
+        sort: BaseSort,
+        exception: Type[Exception],
+) -> None:
+    with pytest.raises(exception):
+        append_sort_to_statement(
+            statement=sa.select(AModel),
+            model=AModel,
+            sort=sort,
+        )
     
     
 def test_append_to_statement() -> None:
@@ -139,3 +174,11 @@ def test_get_count_statement() -> None:
         "WHERE a.id = 1"
     )
     assert compile_statement(stmt) == expected_stmt
+
+
+def test_get_count_statement_raises() -> None:
+    with pytest.raises(SupportSaDriverError):
+        get_count_statement(
+            model=ABModel,
+            filter_=AFilter(id=1, b=BFilter(id=2)),
+        )
