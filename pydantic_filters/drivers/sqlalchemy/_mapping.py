@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union
+from dataclasses import dataclass
+from typing import Any, Dict, List, Type, TypeVar, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -10,24 +11,20 @@ from pydantic_filters import (
 from ._exceptions import AttributeNotFoundSaDriverError, RelationshipNotFoundSaDriverError
 from ._operators import get_filter_operator, get_search_operator
 
-if TYPE_CHECKING:
-    from sqlalchemy.sql.base import ExecutableOption
-
-
 _Filter = TypeVar("_Filter", bound=BaseFilter)
 _Model = TypeVar("_Model", bound=so.DeclarativeBase)
 
 
-__all__ = (
-    "filter_to_column_clauses",
-    "filter_to_column_options",
-)
+@dataclass
+class JoinParams:
+    target: Type[so.DeclarativeBase]
+    on_clause: sa.ColumnExpressionArgument
 
 
 def filter_to_column_clauses(
         filter_: _Filter,
         model: Type[_Model],
-) -> List[Union[sa.ColumnElement[bool], sa.BinaryExpression[bool]]]:
+) -> List[sa.ColumnExpressionArgument]:
     """Data from the filter to the list of expressions for SQLAlchemy
 
     **Example**
@@ -99,15 +96,13 @@ def filter_to_column_clauses(
     return clauses
 
 
-def filter_to_column_options(
+def filter_to_join_targets(
         filter_: _Filter,
         model: Type[so.DeclarativeBase],
-) -> List["ExecutableOption"]:
-    """Does the same as filter_to_columns_clauses,
-    but for nested filters by left-joins of their corresponding relationships in the model
-    """
+) -> List[JoinParams]:
+    """Get targets to join"""
 
-    options = []
+    targets = []
     mapper: so.Mapper = sa.inspect(model)
 
     for field_name in filter_.nested_filters:
@@ -123,25 +118,22 @@ def filter_to_column_options(
                 f"Relationship {model.__name__}.{field_name} not found",
             ) from e
 
-        nested_mapper: so.Mapper = relationship.entity
-
-        clauses = filter_to_column_clauses(
-            filter_=nested_filter,
-            model=nested_mapper.class_,
+        nested_class: Type[_Model] = relationship.entity.class_
+        clauses = cast(
+            List[sa.ColumnExpressionArgument],
+            [pair[0] == pair[1] for pair in relationship.local_remote_pairs],
+        )
+        clauses.extend(
+            filter_to_column_clauses(filter_=nested_filter, model=nested_class),
+        )
+        targets.append(
+            JoinParams(
+                target=nested_class,
+                on_clause=sa.and_(*clauses),
+            ),
         )
 
-        option = so.joinedload(
-            relationship.class_attribute.and_(*clauses),
-            innerjoin=True,
-        )
-        nested_options = filter_to_column_options(
-            filter_=nested_filter,
-            model=nested_mapper.class_,
-        )
+        nested_targets = filter_to_join_targets(filter_=nested_filter, model=nested_class)
+        targets.extend(nested_targets)
 
-        if nested_options:
-            option = option.options(*nested_options)
-
-        options.append(option)
-
-    return options
+    return targets
