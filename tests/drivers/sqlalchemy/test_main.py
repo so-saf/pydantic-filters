@@ -1,4 +1,5 @@
 import re
+from typing import Type
 
 import pytest
 import sqlalchemy as sa
@@ -13,11 +14,16 @@ from pydantic_filters import (
     PaginationInterface, 
     PagePagination,
 )
+from pydantic_filters.drivers.sqlalchemy._exceptions import (
+    AttributeNotFoundSaDriverError,
+    SupportSaDriverError,
+)
 from pydantic_filters.drivers.sqlalchemy._main import (
     append_filter_to_statement,
     append_pagination_to_statement,
     append_sort_to_statement,
     append_to_statement,
+    get_count_statement,
 )
 
 
@@ -38,6 +44,16 @@ class AModel(Base):
     b_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(BModel.id))
     
     b: so.Mapped[BModel] = so.relationship()
+    
+    
+class ABModel(Base):
+    __tablename__ = "ab"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("a_id", "b_id"),
+    )
+    
+    a_id: so.Mapped[int]
+    b_id: so.Mapped[int]
 
 
 class BFilter(BaseFilter):
@@ -64,8 +80,8 @@ def test_append_filter_to_statement() -> None:
         filter_=AFilter(id=1, b=BFilter(id=2)),
     )
     expected_stmt = (
-        "SELECT a.id, a.b_id, b_1.id AS id_1 "
-        "FROM a JOIN b AS b_1 ON b_1.id = a.b_id AND b_1.id = 2 "
+        "SELECT a.id, a.b_id "
+        "FROM a JOIN b ON a.b_id = b.id AND b.id = 2 "
         "WHERE a.id = 1"
     )
     assert compile_statement(stmt) == expected_stmt
@@ -91,6 +107,8 @@ def test_append_pagination_to_statement(pagination: PaginationInterface, expecte
 @pytest.mark.parametrize(
     "sort, expected_stmt",
     [
+        (BaseSort(), 
+         "SELECT a.id, a.b_id FROM a"),
         (BaseSort(sort_by="id"),
          "SELECT a.id, a.b_id FROM a ORDER BY a.id ASC"),
         (BaseSort(sort_by="id", sort_by_order=SortByOrder.desc),
@@ -109,6 +127,24 @@ def test_append_sort_to_statement(
     assert compile_statement(stmt) == expected_stmt
     
     
+@pytest.mark.parametrize(
+    "sort, exception",
+    [
+        (BaseSort(sort_by="biba"), AttributeNotFoundSaDriverError)
+    ],
+)
+def test_append_sort_to_statement_raises( 
+        sort: BaseSort,
+        exception: Type[Exception],
+) -> None:
+    with pytest.raises(exception):
+        append_sort_to_statement(
+            statement=sa.select(AModel),
+            model=AModel,
+            sort=sort,
+        )
+    
+    
 def test_append_to_statement() -> None:
     stmt = append_to_statement(
         statement=sa.select(AModel),
@@ -118,10 +154,31 @@ def test_append_to_statement() -> None:
         sort=BaseSort(sort_by="id", sort_by_order=SortByOrder.desc)
     )
     expected_stmt = (
-        "SELECT a.id, a.b_id, b_1.id AS id_1 "
-        "FROM a JOIN b AS b_1 ON b_1.id = a.b_id AND b_1.id = 2 "
+        "SELECT a.id, a.b_id "
+        "FROM a JOIN b ON a.b_id = b.id AND b.id = 2 "
         "WHERE a.id = 1 "
         "ORDER BY a.id DESC "
         "LIMIT 10 OFFSET 20"
     )
     assert compile_statement(stmt) == expected_stmt
+    
+    
+def test_get_count_statement() -> None:
+    stmt = get_count_statement(
+        model=AModel,
+        filter_=AFilter(id=1, b=BFilter(id=2)),
+    )
+    expected_stmt = (
+        "SELECT count(DISTINCT a.id) AS count_1 "
+        "FROM a JOIN b ON a.b_id = b.id AND b.id = 2 "
+        "WHERE a.id = 1"
+    )
+    assert compile_statement(stmt) == expected_stmt
+
+
+def test_get_count_statement_raises() -> None:
+    with pytest.raises(SupportSaDriverError):
+        get_count_statement(
+            model=ABModel,
+            filter_=AFilter(id=1, b=BFilter(id=2)),
+        )

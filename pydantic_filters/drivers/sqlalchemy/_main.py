@@ -1,4 +1,4 @@
-from typing import Optional, Type, TypeVar
+from typing import Optional, Tuple, Type, TypeVar
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -10,8 +10,8 @@ from pydantic_filters import (
     SortByOrder,
 )
 
-from ._exceptions import AttributeNotFoundSaDriverError
-from ._mapping import filter_to_column_clauses, filter_to_column_options
+from ._exceptions import AttributeNotFoundSaDriverError, SupportSaDriverError
+from ._mapping import filter_to_column_clauses, filter_to_join_targets
 
 _Filter = TypeVar("_Filter", bound=BaseFilter)
 _Pagination = TypeVar("_Pagination", bound=PaginationInterface)
@@ -25,13 +25,17 @@ def append_filter_to_statement(
         model: Type[_Model],
         filter_: _Filter,
 ) -> sa.Select[_T]:
+
+    join_targets = filter_to_join_targets(filter_, model)
+    for target in join_targets:
+        statement = statement.join(
+            target=target.target,
+            onclause=target.on_clause,
+        )
+
     clauses = filter_to_column_clauses(filter_, model)
     if clauses:
         statement = statement.where(*clauses)
-
-    options = filter_to_column_options(filter_, model)
-    if options:
-        statement = statement.options(*options)
 
     return statement
 
@@ -87,3 +91,20 @@ def append_to_statement(
         statement = append_pagination_to_statement(statement=statement, pagination=pagination)
 
     return statement
+
+
+def get_count_statement(
+        model: Type[_Model],
+        filter_: _Filter,
+) -> sa.Select[_T]:
+    primary_key: Tuple[sa.ColumnElement, ...] = sa.inspect(model).primary_key
+    if len(primary_key) > 1:
+        raise SupportSaDriverError("Composite primary keys are not supported")
+
+    statement = sa.select(
+        sa.func.count(
+            sa.distinct(primary_key[0]),
+        ),
+    )
+
+    return append_filter_to_statement(statement, model, filter_)

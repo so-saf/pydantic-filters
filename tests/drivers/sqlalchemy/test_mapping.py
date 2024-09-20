@@ -1,15 +1,18 @@
-from typing import List
-from unittest import mock
+from typing import List, Type
 
 import pytest
-
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from pydantic_filters import BaseFilter, SearchField, SearchType
-from pydantic_filters.drivers.sqlalchemy._main import (
+from pydantic_filters.drivers.sqlalchemy._exceptions import (
+    AttributeNotFoundSaDriverError,
+    RelationshipNotFoundSaDriverError,
+)
+from pydantic_filters.drivers.sqlalchemy._mapping import (
     filter_to_column_clauses,
-    filter_to_column_options,
+    filter_to_join_targets,
+    JoinParams,
 )
 
 
@@ -35,12 +38,12 @@ class AModel(Base):
     b_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(BModel.id))
     b: so.Mapped[BModel] = so.relationship()
     c: so.Mapped[List[CModel]] = so.relationship()
-    
-    
+
+
 class CFilter(BaseFilter):
     id: int
-    
-    
+
+
 class BFilter(BaseFilter):
     id: int
 
@@ -51,12 +54,15 @@ class FilterTest(BaseFilter):
     name: str
     name__null: bool
     name__n: List[str]
+    biba: str
 
     q1: str = SearchField(target=["name"])
     q2: List[str] = SearchField(target=["name"], type_=SearchType.case_sensitive)
-    
+    q3: str = SearchField(target=["boba"])
+
     b: BFilter
     c: CFilter
+    d: CFilter
 
 
 @pytest.mark.parametrize(
@@ -68,24 +74,47 @@ class FilterTest(BaseFilter):
         (FilterTest(name__null=True), AModel.name.is_(None)),
         (FilterTest(name__n=["Eva"]), AModel.name.not_in(["Eva"])),
         (FilterTest(q1="a"), AModel.name.ilike("%a%")),
-        (FilterTest(q2=["a", "b"]), sa.or_(AModel.name.like("%a%"), AModel.name.like("%b%")))
+        (FilterTest(q2=["a", "b"]), sa.or_(AModel.name.like("%a%"), AModel.name.like("%b%"))),
     ]
 )
-def test_filter_to_column_clauses(filter_: BaseFilter, res_clause: sa.BinaryExpression[bool]):
+def test_filter_to_column_clauses(filter_: BaseFilter, res_clause: sa.BinaryExpression[bool]) -> None:
     clauses = filter_to_column_clauses(filter_=filter_, model=AModel)
     assert clauses[0].compare(res_clause)
+    
+    
+@pytest.mark.parametrize(
+    "filter_, exception",
+    [
+        (FilterTest(biba="biba"), AttributeNotFoundSaDriverError),
+        (FilterTest(q3="boba"), AttributeNotFoundSaDriverError),
+    ]
+)
+def test_filter_to_column_clauses_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+    with pytest.raises(exception):
+        filter_to_column_clauses(filter_=filter_, model=AModel)
 
-        
-def test_filter_to_column_options():
-    with mock.patch("sqlalchemy.orm.joinedload") as mock_joinedload:
-        filter_to_column_options(
-            filter_=FilterTest(b=BFilter(id=7), c=CFilter(id=8)),
-            model=AModel,
-        )
-        # This is a subqueries that should be passed to so.joinedload
-        b_attr: so.QueryableAttribute[bool] = mock_joinedload.call_args_list[0].args[0]
-        c_attr: so.QueryableAttribute[bool] = mock_joinedload.call_args_list[1].args[0] 
-        assert b_attr.impl is AModel.b.impl
-        assert c_attr.impl is AModel.c.impl
-        assert b_attr.expression.compare(AModel.b.and_(BModel.id == 7).expression)
-        assert c_attr.expression.compare(AModel.c.and_(CModel.id == 8).expression)
+
+@pytest.mark.parametrize(
+    "filter_, res_join_params",
+    [
+        (
+            FilterTest(b=BFilter(id=1)),
+            JoinParams(target=BModel, on_clause=sa.and_(BModel.id == AModel.b_id, BModel.id == 1)),
+        ),
+    ],
+)
+def test_filter_to_join_targets(filter_: BaseFilter, res_join_params: JoinParams) -> None:
+    joint_targets = filter_to_join_targets(filter_, AModel)
+    assert joint_targets[0].target == res_join_params.target
+    assert joint_targets[0].on_clause.compare(res_join_params.on_clause)
+
+
+@pytest.mark.parametrize(
+    "filter_, exception",
+    [
+        (FilterTest(d=CFilter(id=1)), RelationshipNotFoundSaDriverError),
+    ],
+)
+def test_filter_to_join_targets_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+    with pytest.raises(exception):
+        filter_to_join_targets(filter_, AModel)

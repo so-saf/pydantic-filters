@@ -9,3 +9,7 @@ class AttributeNotFoundSaDriverError(BaseSaDriverError):
 
 class RelationshipNotFoundSaDriverError(BaseSaDriverError):
     pass
+
+
+class SupportSaDriverError(BaseSaDriverError):
+    pass
