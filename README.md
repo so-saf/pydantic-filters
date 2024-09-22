@@ -2,7 +2,7 @@
 # pydantic-filters
 
 [![Testing](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml/badge.svg)](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml)
-[![Coverage](https://codecov.io/gh/so-saf/pydantic-filters/branch/main/graph/badge.svg)](https://codecov.io/gh/so-saf/pydantic-filters)
+[![Coverage](https://codecov.io/gh/so-saf/pydantic-filters/branch/master/graph/badge.svg)](https://codecov.io/gh/so-saf/pydantic-filters)
 [![pypi](https://img.shields.io/pypi/v/pydantic-filters.svg)](https://pypi.python.org/pypi/pydantic-filters)
 [![license](https://img.shields.io/github/license/so-saf/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters/blob/main/LICENSE)
 [![versions](https://img.shields.io/pypi/pyversions/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters)
