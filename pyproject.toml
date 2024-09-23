@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pydantic-filters"
 version = "0.0.0"
-description = ""
+description = "A declarative and intuitive way to describe data filtering and sorting in your application."
 authors = ["Nureev Insaf <uneenymain@gmail.com>"]
 readme = "README.md"
 license = "MIT"
