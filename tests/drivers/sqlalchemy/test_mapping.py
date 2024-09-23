@@ -29,6 +29,9 @@ class CModel(Base):
 class BModel(Base):
     __tablename__ = "b"
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    
+    
+BModelAliased: so.util.AliasedClass = so.aliased(BModel)  # type: ignore
 
 
 class AModel(Base):
@@ -102,13 +105,16 @@ def test_filter_to_column_clauses_raises(filter_: BaseFilter, exception: Type[Ex
     [
         (
             FilterTest(b=BFilter(id=1)),
-            JoinParams(target=BModel, on_clause=sa.and_(BModel.id == AModel.b_id, BModel.id == 1)),
+            JoinParams(
+                target=BModelAliased,
+                on_clause=sa.and_(BModelAliased.id == AModel.b_id, BModelAliased.id == 1),
+            ),
         ),
     ],
 )
 def test_filter_to_join_targets(filter_: BaseFilter, res_join_params: JoinParams) -> None:
     joint_targets = filter_to_join_targets(filter_, AModel)
-    assert joint_targets[0].target == res_join_params.target
+    assert sa.inspect(joint_targets[0].target).mapper == sa.inspect(res_join_params.target).mapper
     assert joint_targets[0].on_clause.compare(res_join_params.on_clause)
 
 

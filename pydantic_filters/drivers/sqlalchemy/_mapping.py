@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, TypeVar, cast
+from typing import Any, Dict, List, Type, TypeVar, Union, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -15,13 +15,13 @@ _Model = TypeVar("_Model", bound=so.DeclarativeBase)
 
 @dataclass
 class JoinParams:
-    target: Type[so.DeclarativeBase]
+    target: Union[Type[so.DeclarativeBase], so.util.AliasedClass]
     on_clause: sa.ColumnExpressionArgument
 
 
 def filter_to_column_clauses(
         filter_: _Filter,
-        model: Type[_Model],
+        model: Union[Type[_Model], so.util.AliasedClass],
 ) -> List[sa.ColumnExpressionArgument]:
     """Data from the filter to the list of expressions for SQLAlchemy
 
@@ -122,16 +122,25 @@ def filter_to_join_targets(
             ) from e
 
         nested_class: Type[_Model] = relationship.entity.class_
+        nested_class_aliased: so.util.AliasedClass = so.aliased(nested_class)
+
+        def replace_by_aliased(__c: sa.Column) -> sa.Column:
+            if __c.table is nested_class.__table__:
+                return getattr(nested_class_aliased, __c.key)
+            return __c
+
         clauses = cast(
             List[sa.ColumnExpressionArgument],
-            [pair[0] == pair[1] for pair in relationship.local_remote_pairs],
+            [
+                replace_by_aliased(pair[0]) == replace_by_aliased(pair[1])
+                for pair in relationship.local_remote_pairs],
         )
         clauses.extend(
-            filter_to_column_clauses(filter_=nested_filter, model=nested_class),
+            filter_to_column_clauses(filter_=nested_filter, model=nested_class_aliased),
         )
         targets.append(
             JoinParams(
-                target=nested_class,
+                target=nested_class_aliased,
                 on_clause=sa.and_(*clauses),
             ),
         )
