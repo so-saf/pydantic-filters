@@ -4,9 +4,7 @@ from typing import Any, Dict, List, Type, TypeVar, cast
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-from pydantic_filters import (
-    BaseFilter,
-)
+from pydantic_filters import BaseFilter
 
 from ._exceptions import AttributeNotFoundSaDriverError, RelationshipNotFoundSaDriverError
 from ._operators import get_filter_operator, get_search_operator
@@ -79,6 +77,7 @@ def filter_to_column_clauses(
             continue
 
         operator = get_search_operator(search_field_info.type)
+        search_clauses = []
 
         for t in search_field_info.target:
             try:
@@ -89,9 +88,13 @@ def filter_to_column_clauses(
                     f"Column {model.__name__}.{t} not found",
                 ) from e
 
-            clauses.append(
+            search_clauses.append(
                 operator(column, search_field_info.is_sequence, included_items[key]),
             )
+
+        clauses.append(
+            sa.or_(*search_clauses),
+        )
 
     return clauses
 

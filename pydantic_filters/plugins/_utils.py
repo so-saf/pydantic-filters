@@ -89,7 +89,7 @@ def inflate_filter(
     to_construct: Dict[str, Any] = {}
     nested_kwargs: Dict[str, Any] = {}
     for k, v in data.items():
-        if not v:
+        if v is None:
             continue
 
         k_without_prefix = remove_prefix(k, prefix, delimiter)

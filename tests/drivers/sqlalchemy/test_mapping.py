@@ -57,6 +57,7 @@ class FilterTest(BaseFilter):
     biba: str
 
     q1: str = SearchField(target=["name"])
+    q1_2: str = SearchField(target=["id", "name"])
     q2: List[str] = SearchField(target=["name"], type_=SearchType.case_sensitive)
     q3: str = SearchField(target=["boba"])
 
@@ -74,14 +75,16 @@ class FilterTest(BaseFilter):
         (FilterTest(name__null=True), AModel.name.is_(None)),
         (FilterTest(name__n=["Eva"]), AModel.name.not_in(["Eva"])),
         (FilterTest(q1="a"), AModel.name.ilike("%a%")),
+        (FilterTest(q1_2="a"), sa.or_(AModel.name.ilike("%a%"), AModel.id.ilike("%a%"))),
         (FilterTest(q2=["a", "b"]), sa.or_(AModel.name.like("%a%"), AModel.name.like("%b%"))),
     ]
 )
 def test_filter_to_column_clauses(filter_: BaseFilter, res_clause: sa.BinaryExpression[bool]) -> None:
     clauses = filter_to_column_clauses(filter_=filter_, model=AModel)
+    assert len(clauses) == 1
     assert clauses[0].compare(res_clause)
-    
-    
+
+
 @pytest.mark.parametrize(
     "filter_, exception",
     [
