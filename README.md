@@ -14,17 +14,19 @@
 Describe the filters, not implement them! 
 A declarative and intuitive way to describe data filtering and sorting in your application.
 
-The only required dependency is Pydantic.
+# Features
+
+- Filtering by the models themselves as well as by related.
+- Built-in pagination and sorting
+- The only required dependency is Pydantic. 
 You can use the basic features without being attached to specific frameworks, 
-or use one of the supported plugins and drivers:
- 
-Plugins:
-* FastAPI >= 0.100.0
+or use one of the supported plugins and drivers: 
+  - Plugins:
+    - FastAPI >= 0.100.0
+  - Drivers: 
+    - SQLAlchemy >= 2
 
-Drivers: 
-* SQLAlchemy >= 2
-
-## Installation
+# Installation
 
 ```shell
 pip install pydantic-filters
