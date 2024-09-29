@@ -8,9 +8,9 @@ from .filter import (
     get_suffixes_map,
 )
 from .pagination import (
+    BasePagination,
     OffsetPagination,
     PagePagination,
-    PaginationInterface,
 )
 from .sort import (
     BaseSort,

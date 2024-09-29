@@ -1,0 +1,111 @@
+site_name: Pydantic Filters
+site_url: https://so-saf.github.io/pydantic-filters/
+dev_addr: 127.0.0.1:8000
+site_description: A declarative and intuitive way to describe data filtering and sorting in your application.
+repo_url: https://github.com/so-saf/pydantic-filters/
+repo_name: so-saf/pydantic-filters
+theme:
+  name: material
+  logo: 'logo-white.svg'
+  favicon: 'favicon.png'
+  features:
+    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+    - announce.dismiss
+    - navigation.tabs
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.preview
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme)"
+      primary: purple
+      accent: purple
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      primary: purple
+      accent: purple
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      primary: purple
+      accent: purple
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+plugins:
+- search
+- mkdocstrings:
+    handlers:
+      python:
+        paths: [.]
+        options:
+          line_length: 80
+          members_order: source
+          separate_signature: true
+          show_signature_annotations: true
+          signature_crossrefs: true
+          show_root_heading: true
+          show_root_full_path: false
+          show_symbol_type_heading: true
+          docstring_section_style: spacy
+          merge_init_into_class: true
+          filters:
+            - '!^_'
+        import:
+          - url: https://docs.python.org/3/objects.inv
+            domains: [py, std]
+
+markdown_extensions:
+  - tables
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - toc:
+      permalink: true
+      title: On this page
+  - admonition
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+nav:
+  - Welcome: 'index.md'
+  - Usage:
+      - Filter: 'usage/filters.md'
+      - Pagination: 'usage/pagination.md'
+      - Sort: 'usage/sort.md'
+      - Plugins:
+          - FastAPI: 'usage/fastapi.md'
+      - Drivers:
+          - SQLAlchemy: 'usage/sqlalchemy.md'
+
+  - API Reference:
+      - Filters:
+          - BaseFilter: 'api/filter/base_filter.md'
+          - Fields: 'api/filter/fields.md'
+          - Configuration: 'api/filter/configuration.md'
+          - Types: 'api/filter/types.md'
+      - Pagination:
+          - Pagination: 'api/pagination/pagination.md'
+      - Sorting:
+          - Sorting: 'api/sorting/sorting.md'
+      - Plugins:
+          - FastAPI: 'api/plugins/fastapi.md'
+      - Drivers:
+          - SQLAlchemy: 'api/drivers/sqlalchemy.md'

@@ -11,11 +11,28 @@ if TYPE_CHECKING:
 
 
 class BaseFilter(BaseModel, metaclass=FilterMetaclass):
+    """
+    A base class for creating pydantic-based filters.
+    """
 
     if TYPE_CHECKING:
         filter_fields: ClassVar[Dict[str, "FilterFieldInfo"]]
+        """
+        Metadata about the filters fields defined on the model,
+        mapping of field names to [`FilterFieldInfo`][pydantic_filters.filter._fields.FilterFieldInfo] objects.
+        """
+
         search_fields: ClassVar[Dict[str, "SearchFieldInfo"]]
+        """
+        Metadata about the search fields defined on the model,
+        mapping of field names to [`SearchFieldInfo`][pydantic_filters.filter._fields.SearchFieldInfo] objects.
+        """
+
         nested_filters: ClassVar[Dict[str, Type["BaseFilter"]]]
+        """
+        Metadata about the nested filters defined on the model,
+        mapping of field names to [`BaseFilter`][pydantic_filters.filter._base.BaseFilter] objects.
+        """
     else:
         filter_fields: ClassVar = {}
         search_fields: ClassVar = {}
@@ -29,3 +46,7 @@ class BaseFilter(BaseModel, metaclass=FilterMetaclass):
         suffixes_map=get_suffixes_map(),
         sequence_types=(list, set),
     )
+    """
+    Configuration for the model, should be a dictionary conforming to
+    [`FilterConfigDict`][pydantic_filters.filter._config.FilterConfigDict].
+    """

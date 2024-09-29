@@ -5,8 +5,8 @@ import sqlalchemy.orm as so
 
 from pydantic_filters import (
     BaseFilter,
+    BasePagination,
     BaseSort,
-    PaginationInterface,
     SortByOrder,
 )
 
@@ -14,7 +14,7 @@ from ._exceptions import AttributeNotFoundSaDriverError, SupportSaDriverError
 from ._mapping import filter_to_column_clauses, filter_to_join_targets
 
 _Filter = TypeVar("_Filter", bound=BaseFilter)
-_Pagination = TypeVar("_Pagination", bound=PaginationInterface)
+_Pagination = TypeVar("_Pagination", bound=BasePagination)
 _Sort = TypeVar("_Sort", bound=BaseSort)
 _Model = TypeVar("_Model", bound=so.DeclarativeBase)
 _T = TypeVar("_T")
@@ -25,6 +25,18 @@ def append_filter_to_statement(
         model: Type[_Model],
         filter_: _Filter,
 ) -> sa.Select[_T]:
+    """
+    Append filtering to statement.
+
+    Args:
+        statement: Some select statement.
+        model: Declaratively defined model.
+        filter_: Filter object.
+
+    Raises:
+        AttributeNotFoundSaDriverError: Attribute not found
+        RelationshipNotFoundSaDriverError:  Relationship not found
+    """
 
     join_targets = filter_to_join_targets(filter_, model)
     for target in join_targets:
@@ -44,6 +56,16 @@ def append_pagination_to_statement(
         statement: sa.Select[_T],
         pagination: _Pagination,
 ) -> sa.Select[_T]:
+    """
+    Append pagination to statement.
+
+    Args:
+        statement: Some select statement.
+        pagination: Pagination object.
+
+    Raises:
+        AttributeNotFoundSaDriverError: Attribute not found
+    """
 
     return (
         statement
@@ -57,6 +79,17 @@ def append_sort_to_statement(
         model: Type[_Model],
         sort: _Sort,
 ) -> sa.Select[_T]:
+    """
+    Append sorting to statement.
+
+    Args:
+        statement: Some select statement.
+        model: Declaratively defined model.
+        sort: Sort object.
+
+    Raises:
+        AttributeNotFoundSaDriverError: Attribute not found
+    """
 
     if sort.sort_by is None:
         return statement
@@ -82,6 +115,20 @@ def append_to_statement(
         sort: Optional[_Sort] = None,
         pagination: Optional[_Pagination] = None,
 ) -> sa.Select[_T]:
+    """
+    All in one function.
+
+    Args:
+        statement: Some select statement.
+        model: Declaratively defined model.
+        filter_: Filter object.
+        sort: Sort object.
+        pagination: Pagination object.
+
+    Raises:
+        AttributeNotFoundSaDriverError: Attribute not found
+        RelationshipNotFoundSaDriverError:  Relationship not found
+    """
 
     if filter_ is not None:
         statement = append_filter_to_statement(statement=statement, model=model, filter_=filter_)
@@ -97,6 +144,19 @@ def get_count_statement(
         model: Type[_Model],
         filter_: _Filter,
 ) -> sa.Select[_T]:
+    """
+    Get count statement.
+
+    Args:
+        model: Declaratively defined model.
+        filter_: Filter object.
+
+    Raises:
+        AttributeNotFoundSaDriverError: Attribute not found.
+        RelationshipNotFoundSaDriverError:  Relationship not found.
+        SupportSaDriverError: Composite primary keys are not supported.
+    """
+
     primary_key: Tuple[sa.ColumnElement, ...] = sa.inspect(model).primary_key
     if len(primary_key) > 1:
         raise SupportSaDriverError("Composite primary keys are not supported")

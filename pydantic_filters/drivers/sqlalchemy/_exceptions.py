@@ -1,6 +1,6 @@
 
 class BaseSaDriverError(Exception):
-    pass
+    """Base SQLAlchemy driver error"""
 
 
 class AttributeNotFoundSaDriverError(BaseSaDriverError):
@@ -12,4 +12,4 @@ class RelationshipNotFoundSaDriverError(BaseSaDriverError):
 
 
 class SupportSaDriverError(BaseSaDriverError):
-    pass
+    """Driver support error"""

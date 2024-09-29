@@ -7,7 +7,7 @@ readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/so-saf/pydantic-filters"
 repository = "https://github.com/so-saf/pydantic-filters"
-documentation = "https://github.com/so-saf/pydantic-filters"
+documentation = "https://so-saf.github.io/pydantic-filters/"
 keywords = ["pydantic", "sqlalchemy", "fastapi"]
 
 
@@ -24,6 +24,13 @@ pytest = "^8.2.2"
 coverage = {extras = ["toml"], version = "^7.6.1"}
 pytest-cov = "^5.0.0"
 covdefaults = "^2.3.0"
+
+
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = "^9.5.37"
+mkdocstrings = {extras = ["python"], version = "^0.26.1"}
+black = "^24.8.0"
+
 
 [build-system]
 requires = ["poetry-core"]

@@ -5,7 +5,7 @@ from pydantic_core import PydanticUndefined
 from ._types import FilterType, FilterTypeLiteral, SearchType, SearchTypeLiteral
 
 
-class _BaseField:
+class BaseField:
     __field_kwargs: Optional[Dict[str, Any]]
 
     __slots__ = (
@@ -17,6 +17,9 @@ class _BaseField:
 
     @property
     def field_kwargs(self) -> Dict[str, Any]:
+        """
+        Get arguments for pydantic.FieldInfo creating.
+        """
         return self.__field_kwargs
 
     def __eq__(self, __value: Any) -> bool:  # noqa: ANN401
@@ -51,7 +54,23 @@ class _BaseField:
         return f'{self.__class__.__name__}({self.__repr_str(", ")})'
 
 
-class FilterFieldInfo(_BaseField):
+class FilterFieldInfo(BaseField):
+    """This class holds information about a filter field.
+
+    FilterFieldInfo is used for any filter field definition regardless of whether the
+    [`FilterField()`][pydantic_filters.filter._fields.FilterField] function is explicitly used.
+
+    Warning:
+        You generally shouldn't be creating `FilterFieldInfo` directly,
+        you'll only need to use it when accessing
+        [`BaseFilter`][pydantic_filters.filter._base.BaseFilter].filter_fields internals.
+
+    Args:
+        target: Target for filtering.
+        type_: Filter type.
+        is_sequence: Is the field annotated as sequence.
+        field_kwargs: Other arguments to pass to pydantic.Field.
+    """
 
     __slots__ = (
         "target",
@@ -75,7 +94,23 @@ class FilterFieldInfo(_BaseField):
         )
 
 
-class SearchFieldInfo(_BaseField):
+class SearchFieldInfo(BaseField):
+    """This class holds information about a search field.
+
+    SearchFieldInfo is used for any search field definition regardless
+    of whether the [`SearchField()`][pydantic_filters.filter._fields.SearchField] function is explicitly used.
+
+    Warning:
+        You generally shouldn't be creating `SearchFieldInfo` directly,
+        you'll only need to use it when accessing
+        [`BaseFilter`][pydantic_filters.filter._base.BaseFilter].search_fields internals.
+
+    Args:
+        target: Target for search.
+        type_: Search type.
+        is_sequence: Is the field annotated as sequence.
+        field_kwargs: Other arguments to pass to pydantic.Field.
+    """
 
     __slots__ = (
         "target",
@@ -91,6 +126,7 @@ class SearchFieldInfo(_BaseField):
             is_sequence: Optional[bool] = None,
             field_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
+
         if not target:
             raise ValueError("Target must contain at least one value")
 
@@ -107,8 +143,20 @@ def FilterField(  # noqa: N802
         *,
         target: Optional[str] = None,
         type_: Union[FilterTypeLiteral, FilterType, None] = None,
-        **field_kwargs,  # noqa: ANN003
+        **field_kwargs: Any,  # noqa: ANN003
 ) -> FilterFieldInfo:
+    """
+    Create a field for objects that can be configured.
+
+    Used to provide extra information about a field.
+
+    Args:
+        default: Default value to be passed to pydantic.Field.
+        target: Target for filtering.
+        type_: Filter type.
+        **field_kwargs: Other arguments to pass to pydantic.Field.
+    """
+
     field_kwargs["default"] = default
     if type_ is not None:
         type_ = FilterType(type_)
@@ -125,8 +173,20 @@ def SearchField(  # noqa: N802
         *,
         target: Sequence[str],
         type_: Union[SearchTypeLiteral, SearchType, None] = None,
-        **field_kwargs,  # noqa: ANN003
+        **field_kwargs: Any,  # noqa: ANN003
 ) -> SearchFieldInfo:
+    """
+    Create a field for objects that can be configured.
+
+    Used to provide extra information about a field.
+
+    Args:
+        default: Default value to be passed to pydantic.Field.
+        target: Target for search.
+        type_: Search type.
+        **field_kwargs: Other arguments to pass to pydantic.Field.
+    """
+
     field_kwargs["default"] = default
     if type_ is not None:
         type_ = SearchType(type_)

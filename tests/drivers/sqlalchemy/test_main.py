@@ -7,11 +7,11 @@ import sqlalchemy.orm as so
 from sqlalchemy.dialects.sqlite import dialect as sa_sqlite_dialect
 
 from pydantic_filters import (
-    BaseFilter, 
-    OffsetPagination, 
-    BaseSort, 
-    SortByOrder, 
-    PaginationInterface, 
+    BaseFilter,
+    OffsetPagination,
+    BaseSort,
+    SortByOrder,
+    BasePagination,
     PagePagination,
 )
 from pydantic_filters.drivers.sqlalchemy._exceptions import (
@@ -114,7 +114,7 @@ def test_append_filter_to_statement(filter_: BaseFilter, expected_stmt: str) -> 
         (PagePagination(page=10, per_page=10), "SELECT a.id, a.b_id, a.b2_id FROM a LIMIT 10 OFFSET 90"),
     ]
 )
-def test_append_pagination_to_statement(pagination: PaginationInterface, expected_stmt: str) -> None:
+def test_append_pagination_to_statement(pagination: BasePagination, expected_stmt: str) -> None:
     stmt = append_pagination_to_statement(
         statement=sa.select(AModel),
         pagination=pagination,

@@ -1,15 +1,18 @@
+---
+hide:
+  - navigation
+  - toc
+---
+
 
 # pydantic-filters
 
 [![Testing](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml/badge.svg)](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml)
-[![Coverage](https://codecov.io/gh/so-saf/pydantic-filters/branch/master/graph/badge.svg)](https://codecov.io/gh/so-saf/pydantic-filters)
 [![pypi](https://img.shields.io/pypi/v/pydantic-filters.svg)](https://pypi.python.org/pypi/pydantic-filters)
 [![license](https://img.shields.io/github/license/so-saf/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters/blob/main/LICENSE)
 [![versions](https://img.shields.io/pypi/pyversions/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters)
 
-**Documentation:** https://so-saf.github.io/pydantic-filters/
-
-**Source Code:** https://github.com/so-saf/pydantic-filters
+**Source Code:** [https://github.com/so-saf/pydantic-filters](https://github.com/so-saf/pydantic-filters)
 
 ---
 
@@ -118,4 +121,4 @@ app = FastAPI(title="User Service")
 app.include_router(router, prefix="/users", tags=["User"])
 ```
 
-![fastapi-simple-example.png](docs/docs/images/fastapi-simple-example.png)
+![fastapi-simple-example.png](images/fastapi-simple-example.png)

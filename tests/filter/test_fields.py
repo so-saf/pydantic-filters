@@ -1,10 +1,10 @@
 import pytest
 
 from pydantic_filters import FilterField, SearchField, FilterType
-from pydantic_filters.filter._fields import _BaseField
+from pydantic_filters.filter._fields import BaseField
 
 
-class FieldTest(_BaseField):
+class FieldTest(BaseField):
     
     __slots__ = 'a', 'b'
     
@@ -14,7 +14,7 @@ class FieldTest(_BaseField):
         super().__init__()
 
 
-class Field2Test(_BaseField):
+class Field2Test(BaseField):
     __slots__ = 'a', 'b'
 
     def __init__(self, a, b):
