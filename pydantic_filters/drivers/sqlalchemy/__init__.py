@@ -2,6 +2,7 @@ from ._exceptions import (
     AttributeNotFoundSaDriverError,
     BaseSaDriverError,
     RelationshipNotFoundSaDriverError,
+    SupportSaDriverError,
 )
 from ._main import (
     append_filter_to_statement,

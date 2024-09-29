@@ -7,12 +7,12 @@ from fastapi import params as fastapi_params
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from pydantic_filters import BaseFilter, BaseSort, PaginationInterface
+from pydantic_filters import BaseFilter, BasePagination, BaseSort
 
 from ._utils import inflate_filter, squash_filter
 
 _Filter = TypeVar("_Filter", bound=BaseFilter)
-_Pagination = TypeVar("_Pagination", bound=PaginationInterface)
+_Pagination = TypeVar("_Pagination", bound=BasePagination)
 _Sort = TypeVar("_Sort", bound=BaseSort)
 _PydanticModel = TypeVar("_PydanticModel", bound=BaseModel)
 
@@ -66,6 +66,14 @@ def FilterDepends(  # noqa: N802
         prefix: str = "",
         delimiter: str = "__",
 ) -> _Filter:  # pragma: no cover
+    """
+    Use this as fastapi.Depends, but for filters.
+
+    Args:
+        filter_: Filter class.
+        prefix: key prefix.
+        delimiter: Delimiter for prefix and nested models.
+    """
 
     def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
         """Signature of this function is replaced with Query parameters,
@@ -92,8 +100,6 @@ def _PydanticModelAsDepends(pydantic_model: Type[_PydanticModel]) -> _PydanticMo
 
     custom_params = []
     for key, field_info in pydantic_model.model_fields.items():
-        if issubclass(field_info.annotation, BaseModel):
-            continue
 
         custom_params.append(
             Parameter(
@@ -112,17 +118,20 @@ def _PydanticModelAsDepends(pydantic_model: Type[_PydanticModel]) -> _PydanticMo
 
 
 def PaginationDepends(pagination: Type[_Pagination]) -> _Pagination:  # pragma: no cover
+    """
+    Use this as fastapi.Depends, but for pagination.
+
+    Args:
+        pagination: Pagination class
+    """
     return _PydanticModelAsDepends(pagination)
 
 
 def SortDepends(sort: Type[_Sort]) -> _Sort:  # pragma: no cover
-    sort_by_field = sort.model_fields["sort_by"]
-    sort_by_order_field = sort.model_fields["sort_by_order"]
+    """
+    Use this as fastapi.Depends, but for sort.
 
-    def _depends(
-            sort_by: sort_by_field.annotation = _field_info_to_query(sort_by_field),
-            sort_by_order: sort_by_order_field.annotation = _field_info_to_query(sort_by_order_field),
-    ) -> _Sort:
-        return sort.model_construct(sort_by=sort_by, sort_by_order=sort_by_order)
-
-    return Depends(_depends)
+    Args:
+        sort: Sort class.
+    """
+    return _PydanticModelAsDepends(sort)

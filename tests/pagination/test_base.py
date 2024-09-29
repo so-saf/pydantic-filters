@@ -1,6 +1,6 @@
 import pytest
 
-from pydantic_filters.pagination import PaginationInterface, PagePagination, OffsetPagination
+from pydantic_filters.pagination import BasePagination, PagePagination, OffsetPagination
 
 
 class TestOffsetPagination:
@@ -12,7 +12,7 @@ class TestOffsetPagination:
             (OffsetPagination(limit=10, offset=0), 10, 0),
         ]
     )
-    def test_get_limit_get_offset(self, obj: PaginationInterface, limit: int, offset: int) -> None:
+    def test_get_limit_get_offset(self, obj: BasePagination, limit: int, offset: int) -> None:
         assert obj.get_limit() == limit
         assert obj.get_offset() == offset
 
@@ -26,6 +26,6 @@ class TestPagePagination:
             (PagePagination(page=12, per_page=34), 34, 374),
         ]
     )
-    def test_get_limit_get_offset(self, obj: PaginationInterface, limit: int, offset: int) -> None:
+    def test_get_limit_get_offset(self, obj: BasePagination, limit: int, offset: int) -> None:
         assert obj.get_limit() == limit
         assert obj.get_offset() == offset
