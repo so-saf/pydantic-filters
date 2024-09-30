@@ -84,6 +84,11 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.superfences
 
+extra:
+  analytics:
+    provider: google
+    property: G-TKZ4R14178
+
 nav:
   - Welcome: 'index.md'
   - Usage:
