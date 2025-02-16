@@ -15,13 +15,13 @@ _Model = TypeVar("_Model", bound=so.DeclarativeBase)
 
 @dataclass
 class JoinParams:
-    target: Union[Type[so.DeclarativeBase], so.util.AliasedClass]
+    target: Type[so.DeclarativeBase]
     on_clause: sa.ColumnExpressionArgument
 
 
 def filter_to_column_clauses(
         filter_: _Filter,
-        model: Union[Type[_Model], so.util.AliasedClass],
+        model: Type[_Model],
 ) -> List[sa.ColumnExpressionArgument]:
     """Data from the filter to the list of expressions for SQLAlchemy
 
@@ -104,9 +104,14 @@ def filter_to_join_targets(
         model: Type[so.DeclarativeBase],
 ) -> List[JoinParams]:
     """Get targets to join"""
+    
+    inspected: so.Mapper = sa.inspect(model)
+    try:
+        mapper = inspected if inspected.is_mapper else inspected.mapper
+    except AttributeError:
+        mapper = inspected
 
     targets = []
-    mapper: so.Mapper = sa.inspect(model)
 
     for field_name in filter_.nested_filters:
         nested_filter = getattr(filter_, field_name)
@@ -127,13 +132,16 @@ def filter_to_join_targets(
         def replace_by_aliased(__c: sa.Column) -> sa.Column:
             if __c.table is nested_class.__table__:
                 return getattr(nested_class_aliased, __c.key)
+            if __c.table is model.__table__:
+                return getattr(model, __c.key)
             return __c
 
         clauses = cast(
             List[sa.ColumnExpressionArgument],
             [
                 replace_by_aliased(pair[0]) == replace_by_aliased(pair[1])
-                for pair in relationship.local_remote_pairs],
+                for pair in relationship.local_remote_pairs
+            ],
         )
         clauses.extend(
             filter_to_column_clauses(filter_=nested_filter, model=nested_class_aliased),
@@ -145,7 +153,7 @@ def filter_to_join_targets(
             ),
         )
 
-        nested_targets = filter_to_join_targets(filter_=nested_filter, model=nested_class)
+        nested_targets = filter_to_join_targets(filter_=nested_filter, model=nested_class_aliased)
         targets.extend(nested_targets)
 
     return targets
