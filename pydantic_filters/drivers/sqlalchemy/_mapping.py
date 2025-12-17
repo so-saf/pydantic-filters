@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, TypeVar, Union, cast
+from typing import Any, Dict, List, Type, TypeVar, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -104,7 +104,7 @@ def filter_to_join_targets(
         model: Type[so.DeclarativeBase],
 ) -> List[JoinParams]:
     """Get targets to join"""
-    
+
     inspected: so.Mapper = sa.inspect(model)
     try:
         mapper = inspected if inspected.is_mapper else inspected.mapper
