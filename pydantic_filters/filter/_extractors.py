@@ -20,10 +20,16 @@ class NestedFilterExtractor:
             self,
             field_name: str,  # noqa: ARG002
             field_info: FieldInfo,
+            *,
+            explicitly_required: bool = False,
     ) -> Tuple[FieldInfo, Type["BaseFilter"]]:
         if field_info.is_required():
 
-            defaults_to_override = _get_defaults_dict_to_override(field_info, optional=self.optional)
+            defaults_to_override = _get_defaults_dict_to_override(
+                field_info,
+                optional=self.optional,
+                explicitly_required=explicitly_required,
+            )
 
             return (
                 FieldInfo.merge_field_infos(field_info, **defaults_to_override),
@@ -56,6 +62,8 @@ class SearchFieldExtractor:
             self,
             field_name: str,  # noqa: ARG002
             field_info: FieldInfo,
+            *,
+            explicitly_required: bool = False,
     ) -> Tuple[FieldInfo, "SearchFieldInfo"]:
         """Вытащить SearchFieldInfo из filed_info
 
@@ -68,7 +76,11 @@ class SearchFieldExtractor:
 
         search_field.is_sequence = _is_sequence(field_info.annotation, self.sequence_types)
         field_info_from_search: FieldInfo = Field(**search_field.field_kwargs)
-        defaults_to_override = _get_defaults_dict_to_override(field_info_from_search, optional=self.optional)
+        defaults_to_override = _get_defaults_dict_to_override(
+            field_info_from_search,
+            optional=self.optional,
+            explicitly_required=explicitly_required,
+        )
 
         return (
             FieldInfo.merge_field_infos(
@@ -99,12 +111,18 @@ class FilterFieldExtractor:
             self,
             field_name: str,
             field_info: FieldInfo,
+            *,
+            explicitly_required: bool = False,
     ) -> Tuple[FieldInfo, FilterFieldInfo]:
         """Extract `FilterInfo` from `filed_info`"""
 
         # when `a: int` or `a: int = 5`
         if not isinstance(field_info.default, FilterFieldInfo):
-            defaults_dict_to_override = _get_defaults_dict_to_override(field_info, optional=self.optional)
+            defaults_dict_to_override = _get_defaults_dict_to_override(
+                field_info,
+                optional=self.optional,
+                explicitly_required=explicitly_required,
+            )
             computed_name, computed_type = self.type_definer(field_name)
 
             return (
@@ -134,7 +152,11 @@ class FilterFieldExtractor:
 
         field_info_from_filter: FieldInfo = Field(**filter_field.field_kwargs)
         filter_field.is_sequence = _is_sequence(field_info.annotation, sequence_types=self.sequence_types)
-        defaults_dict_to_override = _get_defaults_dict_to_override(field_info_from_filter, optional=self.optional)
+        defaults_dict_to_override = _get_defaults_dict_to_override(
+            field_info_from_filter,
+            optional=self.optional,
+            explicitly_required=explicitly_required,
+        )
 
         return (
             FieldInfo.merge_field_infos(
@@ -194,12 +216,12 @@ def _get_defaults_dict_to_override(
         field_info: FieldInfo,
         *,
         optional: bool,
+        explicitly_required: bool = False,
 ) -> Dict[str, Optional[type(PydanticUndefined)]]:
 
     is_required = field_info.is_required()
-    is_ellipsis = field_info._attributes_set.get("default") is Ellipsis
 
-    if is_ellipsis:
+    if explicitly_required:
         return {"default": PydanticUndefined}
     elif not is_required:
         return {}

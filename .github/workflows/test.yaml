@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        pydantic: ["2.0.2", "2.9.2"]
+        pydantic: ["2.0.2", "2.9.2", "2.13.4"]
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
           - fastapi: "0.100.0"
             pydantic: "2.0.2"
           - fastapi: "0.141.1"
-            pydantic: "2.9.2"
+            pydantic: "2.13.4"
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v4

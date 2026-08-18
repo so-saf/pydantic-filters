@@ -83,6 +83,24 @@ def test_default_optional_config_allows_an_empty_filter():
     assert filter_.model_dump(exclude_unset=True) == {}
 
 
+def test_explicit_ellipsis_keeps_all_field_kinds_required():
+    class NestedFilter(BaseFilter):
+        value: int
+
+    class ExplicitFilter(BaseFilter):
+        implicit: int
+        plain: int = ...
+        filtered: int = FilterField(...)
+        searched: str = SearchField(..., target=["plain"])
+        nested: NestedFilter = ...
+
+    assert ExplicitFilter.model_fields["implicit"].is_required() is False
+    assert all(
+        ExplicitFilter.model_fields[name].is_required()
+        for name in ("plain", "filtered", "searched", "nested")
+    )
+
+
 def test_optional_false_keeps_fields_required():
     class RequiredFilter(BaseFilter):
         model_config = {**BaseFilter.model_config, "optional": False}

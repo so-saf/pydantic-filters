@@ -14,7 +14,7 @@ from ._extractors import (
     SearchFieldExtractor,
     is_filter_subclass,
 )
-from ._fields import SearchFieldInfo
+from ._fields import FilterFieldInfo, SearchFieldInfo
 
 if TYPE_CHECKING:
     from ._base import BaseFilter
@@ -40,6 +40,7 @@ class FilterMetaclass(ModelMetaclass):
             namespace: Dict[str, Any],
             **kwargs: Any,  # noqa: ANN401
     ) -> Type["BaseFilter"]:
+        declared_defaults = dict(namespace)
         filter_class = cast("Type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
         model_config: FilterConfigDict = filter_class.model_config
 
@@ -80,22 +81,40 @@ class FilterMetaclass(ModelMetaclass):
             if field_name not in annotations:
                 continue
 
+            declared_default = declared_defaults.get(field_name)
+            explicitly_required = declared_default is Ellipsis or (
+                isinstance(declared_default, (FilterFieldInfo, SearchFieldInfo))
+                and declared_default.field_kwargs.get("default") is Ellipsis
+            )
+
             # when `a: NestedFilter` or `a: NestedFilter = NestedFilter(...)`
             if is_filter_subclass(field_info.annotation):
-                new_model_field, __nested_filter = nested_field_extractor(field_name, field_info)
+                new_model_field, __nested_filter = nested_field_extractor(
+                    field_name,
+                    field_info,
+                    explicitly_required=explicitly_required,
+                )
                 namespace[field_name] = new_model_field
                 nested_fields[field_name] = __nested_filter
                 continue
 
             # when `a: str = SearchField(...)`
             elif isinstance(field_info.default, SearchFieldInfo):
-                new_model_field, __search_field = search_field_extractor(field_name, field_info)
+                new_model_field, __search_field = search_field_extractor(
+                    field_name,
+                    field_info,
+                    explicitly_required=explicitly_required,
+                )
                 namespace[field_name] = new_model_field
                 search_fields[field_name] = __search_field
                 continue
 
             # Declared either with FilterField or without using custom fields at all
-            new_model_field, filter_field = filter_field_extractor(field_name, field_info)
+            new_model_field, filter_field = filter_field_extractor(
+                field_name,
+                field_info,
+                explicitly_required=explicitly_required,
+            )
             namespace[field_name] = new_model_field
             filter_fields[field_name] = filter_field
 

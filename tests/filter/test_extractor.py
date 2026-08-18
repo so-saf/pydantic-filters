@@ -69,18 +69,27 @@ def test_is_sequence(ann: Type, res: bool) -> None:
 
 
 @pytest.mark.parametrize(
-    "field_info, optional, res_dict",
+    "field_info, optional, explicitly_required, res_dict",
     [
-        (Field(), True, {"default": None}),
-        (Field(), False, {"default": PydanticUndefined}),
-        (Field(...), True, {"default": PydanticUndefined}),
-        (Field(...), False, {"default": PydanticUndefined}),
-        (Field("asdf"), True, {}),
-        (Field("asdf"), False, {})
+        (Field(), True, False, {"default": None}),
+        (Field(), False, False, {"default": PydanticUndefined}),
+        (Field(...), True, True, {"default": PydanticUndefined}),
+        (Field(...), False, True, {"default": PydanticUndefined}),
+        (Field("asdf"), True, False, {}),
+        (Field("asdf"), False, False, {})
     ]
 )
-def test_get_default_dict_to_override(field_info: FieldInfo, optional: bool, res_dict: Dict):
-    assert _get_defaults_dict_to_override(field_info, optional=optional) == res_dict
+def test_get_default_dict_to_override(
+        field_info: FieldInfo,
+        optional: bool,
+        explicitly_required: bool,
+        res_dict: Dict,
+):
+    assert _get_defaults_dict_to_override(
+        field_info,
+        optional=optional,
+        explicitly_required=explicitly_required,
+    ) == res_dict
     
 
 class NestedModel(BaseModel):
@@ -117,7 +126,11 @@ class TestNestedFilterExtractor:
     )
     def test_call(self, name: str, optional: bool, res_field_info: FieldInfo):
         extractor = NestedFilterExtractor(optional=optional)
-        field_info, nested_model = extractor(name, self.ModelTest.model_fields[name])
+        field_info, nested_model = extractor(
+            name,
+            self.ModelTest.model_fields[name],
+            explicitly_required=name == "n2",
+        )
         assert nested_model == NestedModel
         assert field_info == res_field_info
         
@@ -165,7 +178,11 @@ class TestSearchFieldExtractor:
             default_search_type=SearchType.case_insensitive,
             sequence_types=(list, set),
         )
-        field_info, search_field_info = extractor(name, self.ModelTest.model_fields[name])
+        field_info, search_field_info = extractor(
+            name,
+            self.ModelTest.model_fields[name],
+            explicitly_required=name == "q3",
+        )
         assert field_info == res_field_info
         assert search_field_info == res_search_field_info
         
@@ -233,6 +250,10 @@ class TestFilterFieldExtractor:
             sequence_types=(list, set),
             type_definer=self.type_definer_mock,
         )
-        field_info, filter_field_info = extractor(name, self.ModelTest.model_fields[name])
+        field_info, filter_field_info = extractor(
+            name,
+            self.ModelTest.model_fields[name],
+            explicitly_required=name in {"f4", "f5"},
+        )
         assert field_info == res_field_info
         assert filter_field_info == res_filter_field_info
