@@ -1,6 +1,6 @@
 from copy import deepcopy
 from inspect import Parameter, signature
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from fastapi import Depends, Query
 from fastapi import params as fastapi_params
@@ -10,6 +10,9 @@ from pydantic.fields import FieldInfo
 from pydantic_filters import BaseFilter, BasePagination, BaseSort
 
 from ._utils import inflate_filter, squash_filter
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _Filter = TypeVar("_Filter", bound=BaseFilter)
 _Pagination = TypeVar("_Pagination", bound=BasePagination)
@@ -22,17 +25,17 @@ def _field_info_to_query(
 ) -> fastapi_params.Query:
     q = Query(
         default=field_info.default,
-        default_factory=field_info.default_factory,
+        default_factory=cast("Callable[[], Any] | None", field_info.default_factory),
         alias=field_info.alias,
         alias_priority=field_info.alias_priority,
         validation_alias=field_info.validation_alias,
         serialization_alias=field_info.serialization_alias,
         title=field_info.title,
         description=field_info.description,
-        discriminator=field_info.discriminator,
+        discriminator=cast("str | None", field_info.discriminator),
         examples=field_info.examples,
         deprecated=getattr(field_info, "deprecated", None),
-        json_schema_extra=field_info.json_schema_extra,
+        json_schema_extra=cast("dict[str, Any] | None", field_info.json_schema_extra),
     )
     q.metadata = deepcopy(field_info.metadata)
     return q
@@ -87,7 +90,7 @@ def FilterDepends(  # noqa: N802
             data=kwargs,
         )
 
-    _depends.__signature__ = signature(_depends).replace(
+    cast("Any", _depends).__signature__ = signature(_depends).replace(
         parameters=_get_custom_params(filter_, prefix, delimiter),
     )
 
@@ -110,7 +113,7 @@ def _PydanticModelAsDepends(pydantic_model: type[_PydanticModel]) -> _PydanticMo
             ),
         )
 
-    _depends.__signature__ = signature(_depends).replace(
+    cast("Any", _depends).__signature__ = signature(_depends).replace(
         parameters=custom_params,
     )
 

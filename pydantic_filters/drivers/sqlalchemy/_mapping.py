@@ -22,10 +22,10 @@ class JoinParams:
 
 def _get_relationship_join_clauses(
         relationship: so.Relationship,
-        model: type[so.DeclarativeBase],
+        model: Any,
         inspected: Any,
         nested_class: type[so.DeclarativeBase],
-        nested_class_aliased: so.util.AliasedClass,
+        nested_class_aliased: so.util.AliasedClass[Any],
 ) -> tuple[list[JoinParams], list[sa.ColumnExpressionArgument]]:
     if relationship.secondary is not None:
         primary_join = relationship.primaryjoin
@@ -35,22 +35,24 @@ def _get_relationship_join_clauses(
         secondary_join = ClauseAdapter(sa.inspect(nested_class_aliased).selectable).traverse(
             relationship.secondaryjoin,
         )
+        assert primary_join is not None
+        assert secondary_join is not None
         return [JoinParams(target=relationship.secondary, on_clause=primary_join)], [secondary_join]
 
-    clauses = []
-    for local, remote in relationship.local_remote_pairs:
+    clauses: list[sa.ColumnExpressionArgument] = []
+    for local, remote in relationship.local_remote_pairs or ():
         if local.table is model.__table__:
-            local = getattr(model, local.key)
+            local = getattr(model, cast("str", local.key))
         if remote.table is nested_class.__table__:
-            remote = getattr(nested_class_aliased, remote.key)
+            remote = getattr(nested_class_aliased, cast("str", remote.key))
         clauses.append(local == remote)
 
-    return [], cast("list[sa.ColumnExpressionArgument]", clauses)
+    return [], clauses
 
 
 def filter_to_column_clauses(
         filter_: _Filter,
-        model: type[_Model],
+        model: type[_Model] | so.util.AliasedClass[_Model],
 ) -> list[sa.ColumnExpressionArgument]:
     """Data from the filter to the list of expressions for SQLAlchemy
 
@@ -78,7 +80,7 @@ def filter_to_column_clauses(
     ]
     """
 
-    clauses = []
+    clauses: list[sa.ColumnExpressionArgument] = []
     included_items: dict[str, Any] = filter_.model_dump(exclude_unset=True)
 
     for key, filter_field_info in filter_.filter_fields.items():
@@ -86,6 +88,7 @@ def filter_to_column_clauses(
             continue
 
         try:
+            assert filter_field_info.target is not None
             column: sa.ColumnElement = getattr(model, filter_field_info.target)
         except AttributeError as e:
             raise AttributeNotFoundSaDriverError(
@@ -96,6 +99,8 @@ def filter_to_column_clauses(
         if isinstance(column.type, sa.ARRAY):
             column = column.any_()
 
+        assert filter_field_info.type is not None
+        assert filter_field_info.is_sequence is not None
         operator = get_filter_operator(filter_field_info.type)
         clauses.append(
             operator(column, filter_field_info.is_sequence, included_items[key]),
@@ -105,12 +110,14 @@ def filter_to_column_clauses(
         if key not in included_items:
             continue
 
+        assert search_field_info.type is not None
+        assert search_field_info.is_sequence is not None
         operator = get_search_operator(search_field_info.type)
-        search_clauses = []
+        search_clauses: list[sa.ColumnExpressionArgument] = []
 
         for t in search_field_info.target:
             try:
-                column = getattr(model, str(t))
+                column = getattr(model, t)
             except AttributeError as e:
                 raise AttributeNotFoundSaDriverError(
                     f"{filter_.__class__.__name__}.{key}: "
@@ -130,11 +137,12 @@ def filter_to_column_clauses(
 
 def filter_to_join_targets(
         filter_: _Filter,
-        model: type[so.DeclarativeBase],
+        model: type[so.DeclarativeBase] | so.util.AliasedClass[Any],
 ) -> list[JoinParams]:
     """Get targets to join"""
 
-    inspected: so.Mapper = sa.inspect(model)
+    inspected = sa.inspect(model)
+    assert inspected is not None
     try:
         mapper = inspected if inspected.is_mapper else inspected.mapper
     except AttributeError:
@@ -155,8 +163,9 @@ def filter_to_join_targets(
                 f"Relationship {model.__name__}.{field_name} not found",
             ) from e
 
-        nested_class: type[_Model] = relationship.entity.class_
-        nested_class_aliased: so.util.AliasedClass = so.aliased(nested_class)
+        assert relationship.entity is not None
+        nested_class = cast("type[so.DeclarativeBase]", relationship.entity.class_)
+        nested_class_aliased = cast("so.util.AliasedClass[Any]", so.aliased(nested_class))
         secondary_targets, clauses = _get_relationship_join_clauses(
             relationship,
             model,

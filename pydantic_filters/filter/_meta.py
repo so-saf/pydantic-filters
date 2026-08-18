@@ -42,7 +42,7 @@ class FilterMetaclass(ModelMetaclass):
     ) -> type["BaseFilter"]:
         declared_defaults = dict(namespace)
         filter_class = cast("type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
-        model_config: FilterConfigDict = filter_class.model_config
+        model_config = cast("FilterConfigDict", filter_class.model_config)
 
         nested_field_extractor = NestedFilterExtractor(
             optional=model_config["optional"],
@@ -65,10 +65,13 @@ class FilterMetaclass(ModelMetaclass):
 
         annotations: dict[str, Any] = {}
         if annotationlib is not None:
-            annotate = annotationlib.get_annotate_from_class_namespace(namespace)
+            get_annotate = getattr(annotationlib, "get_annotate_from_class_namespace")
+            annotate = get_annotate(namespace)
             if annotate is not None:
-                annotations = annotationlib.call_annotate_function(
-                    annotate, annotationlib.Format.FORWARDREF,
+                call_annotate = getattr(annotationlib, "call_annotate_function")
+                format_ = getattr(annotationlib, "Format")
+                annotations = call_annotate(
+                    annotate, format_.FORWARDREF,
                 )
         elif "__annotations__" in namespace:
             annotations = namespace["__annotations__"]

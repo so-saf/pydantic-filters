@@ -7,7 +7,7 @@ from pydantic_filters import FilterType, SearchType
 
 ClauseOperator: TypeAlias = Callable[
     [sa.ColumnElement, bool, Any],
-    sa.BinaryExpression[bool],
+    sa.ColumnElement[bool],
 ]
 
 
@@ -16,7 +16,7 @@ def _op_from_method(method: str) -> ClauseOperator:
             column: sa.ColumnElement,
             is_sequence: bool,
             obj: Any,
-    ) -> sa.BinaryExpression[bool]:
+    ) -> sa.ColumnElement[bool]:
         method_ = getattr(column, method)
         if is_sequence:
             expressions = [method_(o) for o in obj]
@@ -28,26 +28,26 @@ def _op_from_method(method: str) -> ClauseOperator:
 
 def _op_eq(
         column: sa.ColumnElement, is_sequence: bool, obj: Any,
-) -> sa.BinaryExpression[bool]:
+) -> sa.ColumnElement[bool]:
     return column.in_(obj) if is_sequence else column == obj
 
 
 def _op_ne(
         column: sa.ColumnElement, is_sequence: bool, obj: Any,
-) -> sa.BinaryExpression[bool]:
+) -> sa.ColumnElement[bool]:
     return column.not_in(obj) if is_sequence else column != obj
 
 
 def _op_null(
         column: sa.ColumnElement, is_sequence: bool, obj: Any,
-) -> sa.BinaryExpression[bool]:
+) -> sa.ColumnElement[bool]:
     expression = any(obj) if is_sequence else bool(obj)
     return column.is_(None) if expression else column.is_not(None)
 
 
 def _op_case_sensitive_search(
         column: sa.ColumnElement, is_sequence: bool, obj: Any,
-) -> sa.BinaryExpression[bool]:
+) -> sa.ColumnElement[bool]:
     return _op_from_method("like")(
         column,
         is_sequence,
@@ -57,7 +57,7 @@ def _op_case_sensitive_search(
 
 def _op_case_insensitive_search(
         column: sa.ColumnElement, is_sequence: bool, obj: Any,
-) -> sa.BinaryExpression[bool]:
+) -> sa.ColumnElement[bool]:
     return _op_from_method("ilike")(
         column,
         is_sequence,

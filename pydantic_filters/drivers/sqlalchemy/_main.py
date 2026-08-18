@@ -95,7 +95,7 @@ def append_sort_to_statement(
         return statement
 
     try:
-        column: sa.ColumnElement = getattr(model, str(sort.sort_by))
+        column: sa.ColumnElement = getattr(model, sort.sort_by)
     except AttributeError as e:
         raise AttributeNotFoundSaDriverError(
             f"{sort.__class__.__name__}.sort_by: "

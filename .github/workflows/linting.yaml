@@ -9,6 +9,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  pyrefly:
+    name: Pyrefly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Install Python dependencies
+        run: uv sync --locked --group dev --python 3.13
+      - name: Run Pyrefly
+        run: uv run --no-sync pyrefly check --summarize-errors
+
   ruff:
     name: Ruff
     runs-on: ubuntu-latest
