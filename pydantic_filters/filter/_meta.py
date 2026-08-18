@@ -1,5 +1,10 @@
 from typing import TYPE_CHECKING, Any, Dict, Tuple, Type, cast
 
+try:
+    import annotationlib
+except ImportError:
+    annotationlib = None
+
 from pydantic._internal._model_construction import ModelMetaclass  # noqa: PLC2701
 
 from ._definer import FilterTypeDefiner
@@ -57,7 +62,16 @@ class FilterMetaclass(ModelMetaclass):
             ),
         )
 
-        annotations = namespace.get("__annotations__", {})
+        annotations: Dict[str, Any] = {}
+        if annotationlib is not None:
+            annotate = annotationlib.get_annotate_from_class_namespace(namespace)
+            annotations = annotationlib.call_annotate_function(
+                annotate, annotationlib.Format.FORWARDREF,
+            )
+        elif "__annotations__" in namespace:
+            annotations = namespace["__annotations__"]
+        elif "__annotate_func__" in namespace:
+            annotations = namespace["__annotate_func__"](0)
         filter_fields = {}
         search_fields = {}
         nested_fields = {}
