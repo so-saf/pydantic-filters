@@ -4,16 +4,39 @@ on:
   push:
     branches:
       - master
+  pull_request:
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   DEFAULT_PYTHON: "3.13"
 
 jobs:
-  deploy:
+  build:
+    name: Build documentation
     runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --locked --no-default-groups --group docs --python ${{ env.DEFAULT_PYTHON }}
+      - name: Build documentation
+        run: uv run --no-sync mkdocs build -f docs/mkdocs.yml --strict
+
+  deploy:
+    name: Deploy documentation
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Configure Git Credentials
@@ -35,4 +58,4 @@ jobs:
           restore-keys: |
             mkdocs-material-
       - name: Build the docs
-        run: uv run --no-sync mkdocs -f docs/mkdocs.yml gh-deploy --force
+        run: uv run --no-sync mkdocs gh-deploy -f docs/mkdocs.yml --force
