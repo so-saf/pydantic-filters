@@ -27,7 +27,7 @@ class NestedFilterExtractor:
 
             return (
                 FieldInfo.merge_field_infos(field_info, **defaults_to_override),
-                cast(Type["BaseFilter"], _simplify_optional_annotation(field_info.annotation)),
+                cast("Type[BaseFilter]", _simplify_optional_annotation(field_info.annotation)),
             )
 
         if isinstance(field_info.default, (FilterFieldInfo, SearchFieldInfo)):
@@ -35,7 +35,7 @@ class NestedFilterExtractor:
 
         return (
             field_info,
-            cast(Type["BaseFilter"], _simplify_optional_annotation(field_info.annotation)),
+            cast("Type[BaseFilter]", _simplify_optional_annotation(field_info.annotation)),
         )
 
 

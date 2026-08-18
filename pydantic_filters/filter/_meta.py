@@ -40,7 +40,7 @@ class FilterMetaclass(ModelMetaclass):
             namespace: Dict[str, Any],
             **kwargs: Any,  # noqa: ANN401
     ) -> Type["BaseFilter"]:
-        filter_class = cast(Type["BaseFilter"], super().__new__(cls, name, bases, namespace, **kwargs))
+        filter_class = cast("Type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
         model_config: FilterConfigDict = filter_class.model_config
 
         nested_field_extractor = NestedFilterExtractor(
@@ -99,7 +99,7 @@ class FilterMetaclass(ModelMetaclass):
             namespace[field_name] = new_model_field
             filter_fields[field_name] = filter_field
 
-        recreated_filter_class = cast(Type["BaseFilter"], super().__new__(cls, name, bases, namespace, **kwargs))
+        recreated_filter_class = cast("Type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
         # Assigning a new value
         # It is the override that is used, the update method will update the parent field,
         # which will result in a common field for all inheritors of the BaseFilter class, which must be avoided

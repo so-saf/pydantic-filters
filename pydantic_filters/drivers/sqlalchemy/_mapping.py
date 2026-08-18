@@ -137,7 +137,7 @@ def filter_to_join_targets(
             return __c
 
         clauses = cast(
-            List[sa.ColumnExpressionArgument],
+            "List[sa.ColumnExpressionArgument]",
             [
                 replace_by_aliased(pair[0]) == replace_by_aliased(pair[1])
                 for pair in relationship.local_remote_pairs

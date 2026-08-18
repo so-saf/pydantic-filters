@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  DEFAULT_PYTHON: "3.12"
+  DEFAULT_PYTHON: "3.13"
 
 jobs:
   deploy:
@@ -20,20 +20,13 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-      - name: Set up Poetry
-        run: pipx install poetry
-      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        id: python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ env.DEFAULT_PYTHON }}
-          cache: "poetry"
-      - name: Install workflow dependencies
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
+          version: "0.12.1"
+          enable-cache: true
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync --locked --no-default-groups --group docs --python ${{ env.DEFAULT_PYTHON }}
       - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
       - uses: actions/cache@v4
         with:
@@ -42,5 +35,4 @@ jobs:
           restore-keys: |
             mkdocs-material-
       - name: Build the docs
-        working-directory: docs
-        run: poetry run mkdocs gh-deploy --force
+        run: uv run --no-sync mkdocs -f docs/mkdocs.yml gh-deploy --force
