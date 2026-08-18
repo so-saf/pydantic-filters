@@ -160,7 +160,8 @@ def test_annotationlib_branch_reads_class_namespace(monkeypatch):
         @classmethod
         def get_annotate_from_class_namespace(cls, namespace):
             cls.calls.append("get")
-            return namespace["__annotations__"]
+            assert "__annotations__" in namespace or "__annotate_func__" in namespace
+            return {"value": int}
 
         @classmethod
         def call_annotate_function(cls, annotate, format_):
@@ -177,3 +178,24 @@ def test_annotationlib_branch_reads_class_namespace(monkeypatch):
         "get",
         ("call", FakeAnnotationLib.Format.FORWARDREF),
     ]
+
+
+def test_annotationlib_branch_allows_a_class_without_annotations(monkeypatch):
+    class FakeAnnotationLib:
+        class Format:
+            FORWARDREF = object()
+
+        @staticmethod
+        def get_annotate_from_class_namespace(namespace):
+            return None
+
+        @staticmethod
+        def call_annotate_function(annotate, format_):
+            raise AssertionError("No annotation function should be called")
+
+    monkeypatch.setattr(_meta, "annotationlib", FakeAnnotationLib)
+
+    class EmptyFilter(BaseFilter):
+        pass
+
+    assert EmptyFilter.filter_fields == {}

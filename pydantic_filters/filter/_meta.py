@@ -66,9 +66,10 @@ class FilterMetaclass(ModelMetaclass):
         annotations: Dict[str, Any] = {}
         if annotationlib is not None:
             annotate = annotationlib.get_annotate_from_class_namespace(namespace)
-            annotations = annotationlib.call_annotate_function(
-                annotate, annotationlib.Format.FORWARDREF,
-            )
+            if annotate is not None:
+                annotations = annotationlib.call_annotate_function(
+                    annotate, annotationlib.Format.FORWARDREF,
+                )
         elif "__annotations__" in namespace:
             annotations = namespace["__annotations__"]
         elif "__annotate_func__" in namespace:
