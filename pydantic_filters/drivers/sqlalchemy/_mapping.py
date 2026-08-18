@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, TypeVar, cast
+from typing import Any, Dict, List, Tuple, Type, TypeVar, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from sqlalchemy.sql.util import ClauseAdapter
 
 from pydantic_filters import BaseFilter
 
@@ -15,8 +16,36 @@ _Model = TypeVar("_Model", bound=so.DeclarativeBase)
 
 @dataclass
 class JoinParams:
-    target: Type[so.DeclarativeBase]
+    target: Any
     on_clause: sa.ColumnExpressionArgument
+
+
+def _get_relationship_join_clauses(
+        relationship: so.Relationship,
+        model: Type[so.DeclarativeBase],
+        inspected: Any,
+        nested_class: Type[so.DeclarativeBase],
+        nested_class_aliased: so.util.AliasedClass,
+) -> Tuple[List[JoinParams], List[sa.ColumnExpressionArgument]]:
+    if relationship.secondary is not None:
+        primary_join = relationship.primaryjoin
+        if not inspected.is_mapper:
+            primary_join = ClauseAdapter(inspected.selectable).traverse(primary_join)
+
+        secondary_join = ClauseAdapter(sa.inspect(nested_class_aliased).selectable).traverse(
+            relationship.secondaryjoin,
+        )
+        return [JoinParams(target=relationship.secondary, on_clause=primary_join)], [secondary_join]
+
+    clauses = []
+    for local, remote in relationship.local_remote_pairs:
+        if local.table is model.__table__:
+            local = getattr(model, local.key)
+        if remote.table is nested_class.__table__:
+            remote = getattr(nested_class_aliased, remote.key)
+        clauses.append(local == remote)
+
+    return [], cast("List[sa.ColumnExpressionArgument]", clauses)
 
 
 def filter_to_column_clauses(
@@ -128,21 +157,14 @@ def filter_to_join_targets(
 
         nested_class: Type[_Model] = relationship.entity.class_
         nested_class_aliased: so.util.AliasedClass = so.aliased(nested_class)
-
-        def replace_by_aliased(__c: sa.Column) -> sa.Column:
-            if __c.table is nested_class.__table__:
-                return getattr(nested_class_aliased, __c.key)
-            if __c.table is model.__table__:
-                return getattr(model, __c.key)
-            return __c
-
-        clauses = cast(
-            "List[sa.ColumnExpressionArgument]",
-            [
-                replace_by_aliased(pair[0]) == replace_by_aliased(pair[1])
-                for pair in relationship.local_remote_pairs
-            ],
+        secondary_targets, clauses = _get_relationship_join_clauses(
+            relationship,
+            model,
+            inspected,
+            nested_class,
+            nested_class_aliased,
         )
+        targets.extend(secondary_targets)
         clauses.extend(
             filter_to_column_clauses(filter_=nested_filter, model=nested_class_aliased),
         )

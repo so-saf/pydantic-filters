@@ -31,7 +31,7 @@ def _field_info_to_query(
         description=field_info.description,
         discriminator=field_info.discriminator,
         examples=field_info.examples,
-        deprecated=field_info.deprecated,
+        deprecated=getattr(field_info, "deprecated", None),
         json_schema_extra=field_info.json_schema_extra,
     )
     q.metadata = deepcopy(field_info.metadata)
@@ -75,7 +75,7 @@ def FilterDepends(  # noqa: N802
         delimiter: Delimiter for prefix and nested models.
     """
 
-    def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
+    async def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
         """Signature of this function is replaced with Query parameters,
         and kwargs contains already valid data with
         our filters in the form of strings, which we collect into a filter object
@@ -95,7 +95,7 @@ def FilterDepends(  # noqa: N802
 
 
 def _PydanticModelAsDepends(pydantic_model: Type[_PydanticModel]) -> _PydanticModel:  # pragma: no cover
-    def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
+    async def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
         return pydantic_model.model_construct(**kwargs)
 
     custom_params = []

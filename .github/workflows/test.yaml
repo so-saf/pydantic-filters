@@ -36,6 +36,89 @@ jobs:
           name: coverage-${{ matrix.python }}
           path: .coverage
 
+  pydantic-core-compatibility:
+    name: Core / Pydantic ${{ matrix.pydantic }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pydantic: ["2.0.2", "2.9.2"]
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Run core compatibility suite
+        run: |
+          uv run --isolated --no-project --python 3.10 \
+            --with "pydantic==${{ matrix.pydantic }}" \
+            --with "pytest>=8,<9" \
+            --with "sqlalchemy>1.4,<3" \
+            python -m pytest -q \
+              tests/drivers tests/filter tests/pagination tests/sort tests/test_misc.py
+
+  fastapi-compatibility:
+    name: FastAPI ${{ matrix.fastapi }} / Pydantic ${{ matrix.pydantic }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - fastapi: "0.100.0"
+            pydantic: "2.0.2"
+          - fastapi: "0.141.1"
+            pydantic: "2.9.2"
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Run FastAPI compatibility suite
+        run: |
+          uv run --isolated --no-project --python 3.10 \
+            --with "fastapi==${{ matrix.fastapi }}" \
+            --with "pydantic==${{ matrix.pydantic }}" \
+            --with "httpx2>=2.11,<3" \
+            --with "pytest>=8,<9" \
+            python -m pytest -q tests/plugins
+
+  package:
+    name: Package smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Build wheel and source distribution
+        run: uv build
+      - name: Check wheel contents
+        run: |
+          wheel=$(find dist -name '*.whl' -print -quit)
+          if unzip -Z1 "${wheel}" | grep -Eq '^(tests/|\.github/)'; then
+            echo "Wheel contains development-only files"
+            exit 1
+          fi
+      - name: Install and import wheel
+        run: |
+          wheel=$(find dist -name '*.whl' -print -quit)
+          uv venv --python "${DEFAULT_PYTHON}" /tmp/pydantic-filters-wheel
+          uv pip install --python /tmp/pydantic-filters-wheel/bin/python "${wheel}"
+          /tmp/pydantic-filters-wheel/bin/python -c "from pydantic_filters import BaseFilter; assert BaseFilter.__name__ == 'BaseFilter'"
+      - name: Install and import source distribution
+        run: |
+          sdist=$(find dist -name '*.tar.gz' -print -quit)
+          uv venv --python "${DEFAULT_PYTHON}" /tmp/pydantic-filters-sdist
+          uv pip install --python /tmp/pydantic-filters-sdist/bin/python "${sdist}"
+          /tmp/pydantic-filters-sdist/bin/python -c "from pydantic_filters import BaseFilter; assert BaseFilter.__name__ == 'BaseFilter'"
+
   coverage:
     runs-on: ubuntu-latest
     needs: pytest

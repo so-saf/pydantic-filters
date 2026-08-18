@@ -19,7 +19,8 @@ def _op_from_method(method: str) -> ClauseOperator:
     ) -> sa.BinaryExpression[bool]:
         method_ = getattr(column, method)
         if is_sequence:
-            return sa.or_(*[method_(o) for o in obj])
+            expressions = [method_(o) for o in obj]
+            return sa.or_(*expressions) if expressions else sa.false()
         return getattr(column, method)(obj)
 
     return _op

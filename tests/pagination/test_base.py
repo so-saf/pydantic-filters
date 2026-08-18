@@ -1,9 +1,15 @@
 import pytest
+from pydantic import ValidationError
 
 from pydantic_filters.pagination import BasePagination, PagePagination, OffsetPagination
 
 
 class TestOffsetPagination:
+
+    def test_defaults(self) -> None:
+        pagination = OffsetPagination()
+        assert pagination.get_limit() == 100
+        assert pagination.get_offset() == 0
     
     @pytest.mark.parametrize(
         "obj, limit, offset",
@@ -19,6 +25,11 @@ class TestOffsetPagination:
 
 class TestPagePagination:
 
+    def test_defaults(self) -> None:
+        pagination = PagePagination()
+        assert pagination.get_limit() == 100
+        assert pagination.get_offset() == 0
+
     @pytest.mark.parametrize(
         "obj, limit, offset",
         [
@@ -29,3 +40,17 @@ class TestPagePagination:
     def test_get_limit_get_offset(self, obj: BasePagination, limit: int, offset: int) -> None:
         assert obj.get_limit() == limit
         assert obj.get_offset() == offset
+
+
+@pytest.mark.parametrize(
+    "pagination, kwargs, field",
+    [
+        (OffsetPagination, {"limit": 0}, "limit"),
+        (OffsetPagination, {"offset": -1}, "offset"),
+        (PagePagination, {"page": 0}, "page"),
+        (PagePagination, {"per_page": 0}, "per_page"),
+    ],
+)
+def test_pagination_rejects_values_below_minimum(pagination, kwargs, field) -> None:
+    with pytest.raises(ValidationError, match=field):
+        pagination(**kwargs)

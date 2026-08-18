@@ -179,6 +179,18 @@ def test_append_to_statement() -> None:
         "LIMIT 10 OFFSET 20"
     )
     assert compile_statement(stmt) == expected_stmt
+
+
+def test_append_to_statement_without_operations_is_noop() -> None:
+    statement = sa.select(AModel)
+
+    assert append_to_statement(statement=statement, model=AModel) is statement
+
+
+def test_append_filter_to_statement_with_empty_filter_has_no_where_clause() -> None:
+    statement = append_filter_to_statement(sa.select(AModel), AModel, AFilter())
+
+    assert compile_statement(statement) == "SELECT a.id, a.b_id, a.b2_id FROM a"
     
     
 def test_get_count_statement() -> None:
