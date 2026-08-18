@@ -1,6 +1,6 @@
 from copy import deepcopy
 from inspect import Parameter, signature
-from typing import Any, List, Type, TypeVar
+from typing import Any, TypeVar
 
 from fastapi import Depends, Query
 from fastapi import params as fastapi_params
@@ -39,10 +39,10 @@ def _field_info_to_query(
 
 
 def _get_custom_params(
-        filter_: Type[_Filter],
+        filter_: type[_Filter],
         prefix: str,
         delimiter: str,
-) -> List[Parameter]:
+) -> list[Parameter]:
 
     squashed = squash_filter(
         filter_=filter_,
@@ -62,7 +62,7 @@ def _get_custom_params(
 
 
 def FilterDepends(  # noqa: N802
-        filter_: Type[_Filter],
+        filter_: type[_Filter],
         prefix: str = "",
         delimiter: str = "__",
 ) -> _Filter:  # pragma: no cover
@@ -94,8 +94,8 @@ def FilterDepends(  # noqa: N802
     return Depends(_depends)
 
 
-def _PydanticModelAsDepends(pydantic_model: Type[_PydanticModel]) -> _PydanticModel:  # pragma: no cover
-    async def _depends(**kwargs: Any) -> _Filter:  # noqa: ANN401
+def _PydanticModelAsDepends(pydantic_model: type[_PydanticModel]) -> _PydanticModel:  # pragma: no cover
+    async def _depends(**kwargs: Any) -> _PydanticModel:  # noqa: ANN401
         return pydantic_model.model_construct(**kwargs)
 
     custom_params = []
@@ -117,7 +117,7 @@ def _PydanticModelAsDepends(pydantic_model: Type[_PydanticModel]) -> _PydanticMo
     return Depends(_depends)
 
 
-def PaginationDepends(pagination: Type[_Pagination]) -> _Pagination:  # pragma: no cover
+def PaginationDepends(pagination: type[_Pagination]) -> _Pagination:  # pragma: no cover
     """
     Use this as fastapi.Depends, but for pagination.
 
@@ -127,7 +127,7 @@ def PaginationDepends(pagination: Type[_Pagination]) -> _Pagination:  # pragma: 
     return _PydanticModelAsDepends(pagination)
 
 
-def SortDepends(sort: Type[_Sort]) -> _Sort:  # pragma: no cover
+def SortDepends(sort: type[_Sort]) -> _Sort:  # pragma: no cover
     """
     Use this as fastapi.Depends, but for sort.
 

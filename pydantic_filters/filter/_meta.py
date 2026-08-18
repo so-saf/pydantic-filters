@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Type, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     import annotationlib
@@ -26,22 +26,22 @@ class FilterMetaclass(ModelMetaclass):
     def __new__(
             cls,
             name: str,
-            bases: Tuple[Type[Any], ...],
-            namespace: Dict[str, Any],
+            bases: tuple[type[Any], ...],
+            namespace: dict[str, Any],
             **kwargs: Any,  # noqa: ANN401
-    ) -> Type["BaseFilter"]:
+    ) -> type["BaseFilter"]:
         return cls.__new(name, bases, namespace, **kwargs)
 
     @classmethod
     def __new(
             cls,
             name: str,
-            bases: Tuple[Type[Any], ...],
-            namespace: Dict[str, Any],
+            bases: tuple[type[Any], ...],
+            namespace: dict[str, Any],
             **kwargs: Any,  # noqa: ANN401
-    ) -> Type["BaseFilter"]:
+    ) -> type["BaseFilter"]:
         declared_defaults = dict(namespace)
-        filter_class = cast("Type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
+        filter_class = cast("type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
         model_config: FilterConfigDict = filter_class.model_config
 
         nested_field_extractor = NestedFilterExtractor(
@@ -63,7 +63,7 @@ class FilterMetaclass(ModelMetaclass):
             ),
         )
 
-        annotations: Dict[str, Any] = {}
+        annotations: dict[str, Any] = {}
         if annotationlib is not None:
             annotate = annotationlib.get_annotate_from_class_namespace(namespace)
             if annotate is not None:
@@ -119,7 +119,7 @@ class FilterMetaclass(ModelMetaclass):
             namespace[field_name] = new_model_field
             filter_fields[field_name] = filter_field
 
-        recreated_filter_class = cast("Type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
+        recreated_filter_class = cast("type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
         # Assigning a new value
         # It is the override that is used, the update method will update the parent field,
         # which will result in a common field for all inheritors of the BaseFilter class, which must be avoided

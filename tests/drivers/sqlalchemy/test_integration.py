@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
@@ -29,14 +27,14 @@ class User(Base):
     __tablename__ = "users"
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     name: so.Mapped[str]
-    roles: so.Mapped[List[Role]] = so.relationship(secondary=user_role)
+    roles: so.Mapped[list[Role]] = so.relationship(secondary=user_role)
 
 
 class Employee(Base):
     __tablename__ = "employees"
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    manager_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("employees.id"))
-    manager: so.Mapped[Optional["Employee"]] = so.relationship(remote_side="Employee.id")
+    manager_id: so.Mapped[int | None] = so.mapped_column(sa.ForeignKey("employees.id"))
+    manager: so.Mapped["Employee | None"] = so.relationship(remote_side="Employee.id")
 
 
 class CompositeParent(Base):
@@ -96,10 +94,10 @@ class CompositeChildFilter(BaseFilter):
 
 
 class ItemFilter(BaseFilter):
-    id: List[int]
-    id__n: List[int]
+    id: list[int]
+    id__n: list[int]
     score__ge: int
-    query: List[str] = SearchField(target=["name"])
+    query: list[str] = SearchField(target=["name"])
 
 
 def make_session() -> so.Session:

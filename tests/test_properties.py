@@ -1,5 +1,3 @@
-from typing import List
-
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -37,7 +35,7 @@ def test_filter_type_definer_keeps_targets_without_known_suffix(target: str) -> 
 
 
 class PropertyNestedFilter(BaseFilter):
-    values: List[int]
+    values: list[int]
 
 
 class PropertyFilter(BaseFilter):
@@ -53,7 +51,7 @@ class PropertyFilter(BaseFilter):
 )
 def test_squash_inflate_round_trip_for_generated_values(
         identifier: int,
-        values: List[int],
+        values: list[int],
         prefix: str,
         delimiter: str,
 ) -> None:

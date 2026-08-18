@@ -106,6 +106,10 @@ jobs:
             echo "Wheel contains development-only files"
             exit 1
           fi
+          if ! unzip -Z1 "${wheel}" | grep -qx 'pydantic_filters/py.typed'; then
+            echo "Wheel does not contain the PEP 561 marker"
+            exit 1
+          fi
       - name: Install and import wheel
         run: |
           wheel=$(find dist -name '*.whl' -print -quit)

@@ -1,7 +1,9 @@
-from typing import TYPE_CHECKING, Callable, Dict, Optional, Tuple, Type, Union, cast, get_args, get_origin
+from collections.abc import Callable
+from types import UnionType
+from typing import TYPE_CHECKING, Union, cast, get_args, get_origin
 
 from pydantic.fields import Field, FieldInfo
-from pydantic_core import PydanticUndefined
+from pydantic_core import PydanticUndefined, PydanticUndefinedType
 
 from .._types import Annotation, NoneType
 from ._fields import FilterFieldInfo, SearchFieldInfo
@@ -22,7 +24,7 @@ class NestedFilterExtractor:
             field_info: FieldInfo,
             *,
             explicitly_required: bool = False,
-    ) -> Tuple[FieldInfo, Type["BaseFilter"]]:
+    ) -> tuple[FieldInfo, type["BaseFilter"]]:
         if field_info.is_required():
 
             defaults_to_override = _get_defaults_dict_to_override(
@@ -33,7 +35,7 @@ class NestedFilterExtractor:
 
             return (
                 FieldInfo.merge_field_infos(field_info, **defaults_to_override),
-                cast("Type[BaseFilter]", _simplify_optional_annotation(field_info.annotation)),
+                cast("type[BaseFilter]", _simplify_optional_annotation(field_info.annotation)),
             )
 
         if isinstance(field_info.default, (FilterFieldInfo, SearchFieldInfo)):
@@ -41,7 +43,7 @@ class NestedFilterExtractor:
 
         return (
             field_info,
-            cast("Type[BaseFilter]", _simplify_optional_annotation(field_info.annotation)),
+            cast("type[BaseFilter]", _simplify_optional_annotation(field_info.annotation)),
         )
 
 
@@ -52,7 +54,7 @@ class SearchFieldExtractor:
             *,
             optional: bool,
             default_search_type: "SearchType",
-            sequence_types: Tuple[Type, ...],
+            sequence_types: tuple[type, ...],
     ) -> None:
         self.optional = optional
         self.default_search_type = default_search_type
@@ -64,7 +66,7 @@ class SearchFieldExtractor:
             field_info: FieldInfo,
             *,
             explicitly_required: bool = False,
-    ) -> Tuple[FieldInfo, "SearchFieldInfo"]:
+    ) -> tuple[FieldInfo, "SearchFieldInfo"]:
         """Вытащить SearchFieldInfo из filed_info
 
         - SearchFieldInfo(type="like") -> FieldInfo(), SearchFieldInfo(type="like")
@@ -99,8 +101,8 @@ class FilterFieldExtractor:
             *,
             optional: bool,
             default_filter_type: "FilterType",
-            sequence_types: Tuple[Type, ...],
-            type_definer: Callable[[str], Tuple[str, "FilterType"]],
+            sequence_types: tuple[type, ...],
+            type_definer: Callable[[str], tuple[str, "FilterType"]],
     ) -> None:
         self.optional = optional
         self.default_filter_type = default_filter_type
@@ -113,7 +115,7 @@ class FilterFieldExtractor:
             field_info: FieldInfo,
             *,
             explicitly_required: bool = False,
-    ) -> Tuple[FieldInfo, FilterFieldInfo]:
+    ) -> tuple[FieldInfo, FilterFieldInfo]:
         """Extract `FilterInfo` from `filed_info`"""
 
         # when `a: int` or `a: int = 5`
@@ -178,15 +180,15 @@ def is_filter_subclass(type_: Annotation) -> bool:
 
 def _is_sequence(
         annotation: Annotation,
-        sequence_types: Tuple[Type, ...],
+        sequence_types: tuple[type, ...],
 ) -> bool:
     """
     str -> False
-    List[str] -> True
-    Optional[str] -> False
-    Optional[List[str]] -> True
-    Union[List[str], None] -> True
-    Union[List[str], str, None] -> False
+    list[str] -> True
+    str | None -> False
+    list[str] | None -> True
+    list[str] | None -> True
+    list[str] | str | None -> False
     """
     origin = get_origin(_simplify_optional_annotation(annotation))
     if origin in sequence_types:
@@ -197,13 +199,13 @@ def _is_sequence(
 
 def _simplify_optional_annotation(annotation: Annotation) -> Annotation:
     """
-    Optional[str] -> str
-    Optional[List[str]] -> List[str]
-    Union[int, str, None] -> Union[int, str, None]
+    str | None -> str
+    list[str] | None -> list[str]
+    int | str | None -> int | str | None
     str -> str
     """
     origin = get_origin(annotation)
-    if origin is Union:
+    if origin in (Union, UnionType):
         args = set(get_args(annotation))
         args.discard(NoneType)
         if len(args) == 1:
@@ -217,15 +219,14 @@ def _get_defaults_dict_to_override(
         *,
         optional: bool,
         explicitly_required: bool = False,
-) -> Dict[str, Optional[type(PydanticUndefined)]]:
+) -> dict[str, PydanticUndefinedType | None]:
 
     is_required = field_info.is_required()
 
     if explicitly_required:
         return {"default": PydanticUndefined}
-    elif not is_required:
+    if not is_required:
         return {}
-    elif is_required and optional:
+    if optional:
         return {"default": None}
-    elif is_required and not optional:
-        return {"default": PydanticUndefined}
+    return {"default": PydanticUndefined}

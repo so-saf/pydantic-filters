@@ -1,8 +1,6 @@
 from copy import deepcopy
 from enum import Enum
-from typing import Dict, Literal
-
-from typing_extensions import TypeAlias
+from typing import Literal, TypeAlias
 
 
 class FilterType(str, Enum):
@@ -68,7 +66,7 @@ SearchTypeLiteral: TypeAlias = Literal[
 Literal alias for [`SearchType`][pydantic_filters.filter._types.SearchType]
 """
 
-_suffixes_map: Dict[str, FilterType] = {
+_suffixes_map: dict[str, FilterType] = {
     "eq": FilterType.eq,
     "n": FilterType.ne,
     "ne": FilterType.ne,
@@ -88,7 +86,7 @@ _suffixes_map: Dict[str, FilterType] = {
 }
 
 
-def get_suffixes_map() -> Dict[str, FilterType]:
+def get_suffixes_map() -> dict[str, FilterType]:
     """
     Return a copy of the standard suffix-to-filter-type mapping.
 

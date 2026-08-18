@@ -1,5 +1,5 @@
+import typing
 from functools import partialmethod
-from typing import Tuple, Type, List, Set, Union, Optional, Dict
 from unittest import mock
 
 import pytest
@@ -31,7 +31,7 @@ from tests.misc import __field_info_eq__
         (object, False),
     ]
 )
-def test_is_filter_subclass(base: Type, res: bool):
+def test_is_filter_subclass(base: type, res: bool):
     assert is_filter_subclass(type("Klass", (base,), {}), ) is res
     
     
@@ -43,27 +43,30 @@ def test_is_filter_subclass_for_instance():
     "ann, res_ann",
     [
         (str, str),
-        (Optional[str], str),
-        (Optional[List[str]], List[str]),
-        (Optional[Union[str, int]], Union[str, int, None]),
-        (Union[str, int, None], Union[str, int, None])
+        (str | None, str),
+        (list[str] | None, list[str]),
+        (str | int | None, str | int | None),
     ]
 )
-def test_simplify_annotation(ann: Type, res_ann: Type):
+def test_simplify_annotation(ann: type, res_ann: type):
     assert _simplify_optional_annotation(ann) == res_ann
+
+
+def test_simplify_annotation_supports_legacy_typing_optional():
+    assert _simplify_optional_annotation(typing.Optional[list[str]]) == list[str]
 
 
 @pytest.mark.parametrize(
     "ann, res",
     [
         (str, False),
-        (List[int], True),
-        (Set[int], True),
-        (Union[List[str], None], True),
-        (Union[List[str], str, None], False),
+        (list[int], True),
+        (set[int], True),
+        (list[str] | None, True),
+        (list[str] | str | None, False),
     ]
 )
-def test_is_sequence(ann: Type, res: bool) -> None:
+def test_is_sequence(ann: type, res: bool) -> None:
     sequence_types = (list, set)
     assert _is_sequence(ann, sequence_types) is res
 
@@ -83,7 +86,7 @@ def test_get_default_dict_to_override(
         field_info: FieldInfo,
         optional: bool,
         explicitly_required: bool,
-        res_dict: Dict,
+        res_dict: dict,
 ):
     assert _get_defaults_dict_to_override(
         field_info,
@@ -101,7 +104,7 @@ class TestNestedFilterExtractor:
     class ModelTest(BaseModel):
         n1: NestedModel
         n2: NestedModel = ...
-        n3: Optional[NestedModel]
+        n3: NestedModel | None
         n4: NestedModel = NestedModel()
         n5: NestedModel = "aboba"
         
@@ -145,7 +148,7 @@ class TestSearchFieldExtractor:
     
     class ModelTest(BaseModel):
         q1: str = SearchField(target=["a"])
-        q2: List[str] = SearchField(target=["a"])
+        q2: list[str] = SearchField(target=["a"])
         q3: str = SearchField(..., target=["a"])
 
     @mock.patch.object(FieldInfo, "__eq__", new=partialmethod(__field_info_eq__, exclude=["annotation"]))
@@ -190,12 +193,12 @@ class TestSearchFieldExtractor:
 class TestFilterFieldExtractor:
     
     @staticmethod
-    def type_definer_mock(target: str) -> Tuple[str, FilterType]:
+    def type_definer_mock(target: str) -> tuple[str, FilterType]:
         return target, FilterType.eq
 
     class ModelTest(BaseModel):
         f1: str
-        f2: List[str]
+        f2: list[str]
         f3: str = FilterField()
         f4: str = ...
         f5: str = FilterField(...)

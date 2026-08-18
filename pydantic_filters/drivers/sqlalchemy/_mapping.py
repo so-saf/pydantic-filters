@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Type, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -22,11 +22,11 @@ class JoinParams:
 
 def _get_relationship_join_clauses(
         relationship: so.Relationship,
-        model: Type[so.DeclarativeBase],
+        model: type[so.DeclarativeBase],
         inspected: Any,
-        nested_class: Type[so.DeclarativeBase],
+        nested_class: type[so.DeclarativeBase],
         nested_class_aliased: so.util.AliasedClass,
-) -> Tuple[List[JoinParams], List[sa.ColumnExpressionArgument]]:
+) -> tuple[list[JoinParams], list[sa.ColumnExpressionArgument]]:
     if relationship.secondary is not None:
         primary_join = relationship.primaryjoin
         if not inspected.is_mapper:
@@ -45,13 +45,13 @@ def _get_relationship_join_clauses(
             remote = getattr(nested_class_aliased, remote.key)
         clauses.append(local == remote)
 
-    return [], cast("List[sa.ColumnExpressionArgument]", clauses)
+    return [], cast("list[sa.ColumnExpressionArgument]", clauses)
 
 
 def filter_to_column_clauses(
         filter_: _Filter,
-        model: Type[_Model],
-) -> List[sa.ColumnExpressionArgument]:
+        model: type[_Model],
+) -> list[sa.ColumnExpressionArgument]:
     """Data from the filter to the list of expressions for SQLAlchemy
 
     **Example**
@@ -65,8 +65,8 @@ def filter_to_column_clauses(
     ...     name: so.Mapped[str]
     ...
     >>> class MyFilter(BaseFilter):
-    ...     name: List[str]
-    ...     name__n: List[str]
+    ...     name: list[str]
+    ...     name__n: list[str]
     ...
     >>> filter_to_column_clauses(
     ...     filter_=MyFilter(name=["Alice", "Bob"], name__n=["Eva"]),
@@ -79,7 +79,7 @@ def filter_to_column_clauses(
     """
 
     clauses = []
-    included_items: Dict[str, Any] = filter_.model_dump(exclude_unset=True)
+    included_items: dict[str, Any] = filter_.model_dump(exclude_unset=True)
 
     for key, filter_field_info in filter_.filter_fields.items():
         if key not in included_items:
@@ -130,8 +130,8 @@ def filter_to_column_clauses(
 
 def filter_to_join_targets(
         filter_: _Filter,
-        model: Type[so.DeclarativeBase],
-) -> List[JoinParams]:
+        model: type[so.DeclarativeBase],
+) -> list[JoinParams]:
     """Get targets to join"""
 
     inspected: so.Mapper = sa.inspect(model)
@@ -155,7 +155,7 @@ def filter_to_join_targets(
                 f"Relationship {model.__name__}.{field_name} not found",
             ) from e
 
-        nested_class: Type[_Model] = relationship.entity.class_
+        nested_class: type[_Model] = relationship.entity.class_
         nested_class_aliased: so.util.AliasedClass = so.aliased(nested_class)
         secondary_targets, clauses = _get_relationship_join_clauses(
             relationship,

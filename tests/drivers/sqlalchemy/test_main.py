@@ -1,5 +1,4 @@
 import re
-from typing import Type
 
 import pytest
 import sqlalchemy as sa
@@ -153,7 +152,7 @@ def test_append_sort_to_statement(
 )
 def test_append_sort_to_statement_raises( 
         sort: BaseSort,
-        exception: Type[Exception],
+        exception: type[Exception],
 ) -> None:
     with pytest.raises(exception):
         append_sort_to_statement(

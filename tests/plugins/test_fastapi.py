@@ -1,5 +1,4 @@
 from inspect import Parameter, signature
-from typing import List
 from unittest import mock
 
 import pytest
@@ -154,7 +153,7 @@ async def test_filter_depends_parses_nested_query_parameters_end_to_end():
 @pytest.mark.anyio
 async def test_filter_depends_supports_aliases_and_repeated_list_parameters():
     class ApiFilter(BaseFilter):
-        identifiers: List[int]
+        identifiers: list[int]
         internal_name: str = FilterField(alias="name")
 
     app = FastAPI()

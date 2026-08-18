@@ -1,5 +1,4 @@
 import re
-from typing import Dict, Tuple
 
 from pydantic_filters.filter._types import FilterType
 
@@ -24,7 +23,7 @@ class FilterTypeDefiner:
             self,
             delimiter: str,
             default: FilterType,
-            suffixes_map: Dict[str, FilterType],
+            suffixes_map: dict[str, FilterType],
     ) -> None:
         if not _DELIMITER_REGEX.match(delimiter):
             raise ValueError("delimiter must be specified")
@@ -33,7 +32,7 @@ class FilterTypeDefiner:
         self.default = default
         self.suffixes_map = suffixes_map
 
-    def __call__(self, target: str) -> Tuple[str, FilterType]:
+    def __call__(self, target: str) -> tuple[str, FilterType]:
         """
         :return: Defined name and filter type
         """

@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 import sqlalchemy as sa
@@ -125,5 +125,5 @@ def test_empty_search_sequence_is_always_false(operator):
         (_search_type_to_operator_map, SearchType),
     ]
 )
-def test_fullness_map(map_: Dict, enum):
+def test_fullness_map(map_: dict, enum):
     assert set(map_.keys()) == set(enum)

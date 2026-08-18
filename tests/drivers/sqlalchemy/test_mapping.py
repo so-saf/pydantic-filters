@@ -1,5 +1,3 @@
-from typing import List, Optional, Type
-
 import pytest
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -56,14 +54,14 @@ class RootModel(Base):
 class ArrayModel(Base):
     __tablename__ = "array_model"
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    tags: so.Mapped[List[str]] = so.mapped_column(sa.ARRAY(sa.String))
+    tags: so.Mapped[list[str]] = so.mapped_column(sa.ARRAY(sa.String))
 
 
 class NodeModel(Base):
     __tablename__ = "node"
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("node.id"))
-    parent: so.Mapped[Optional["NodeModel"]] = so.relationship(remote_side="NodeModel.id")
+    parent_id: so.Mapped[int | None] = so.mapped_column(sa.ForeignKey("node.id"))
+    parent: so.Mapped["NodeModel | None"] = so.relationship(remote_side="NodeModel.id")
 
 
 class AModel(Base):
@@ -72,7 +70,7 @@ class AModel(Base):
     name: so.Mapped[str]
     b_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(BModel.id))
     b: so.Mapped[BModel] = so.relationship()
-    c: so.Mapped[List[CModel]] = so.relationship()
+    c: so.Mapped[list[CModel]] = so.relationship()
 
 
 class CFilter(BaseFilter):
@@ -88,12 +86,12 @@ class FilterTest(BaseFilter):
     id__lt: int
     name: str
     name__null: bool
-    name__n: List[str]
+    name__n: list[str]
     biba: str
 
     q1: str = SearchField(target=["name"])
     q1_2: str = SearchField(target=["id", "name"])
-    q2: List[str] = SearchField(target=["name"], type_=SearchType.case_sensitive)
+    q2: list[str] = SearchField(target=["name"], type_=SearchType.case_sensitive)
     q3: str = SearchField(target=["boba"])
 
     b: BFilter
@@ -152,7 +150,7 @@ def test_filter_to_column_clauses(filter_: BaseFilter, res_clause: sa.BinaryExpr
         (FilterTest(q3="boba"), AttributeNotFoundSaDriverError),
     ]
 )
-def test_filter_to_column_clauses_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+def test_filter_to_column_clauses_raises(filter_: BaseFilter, exception: type[Exception]) -> None:
     with pytest.raises(exception):
         filter_to_column_clauses(filter_=filter_, model=AModel)
 
@@ -221,6 +219,6 @@ def test_filter_to_join_targets_preserves_root_side_of_self_relationship() -> No
         (FilterTest(d=CFilter(id=1)), RelationshipNotFoundSaDriverError),
     ],
 )
-def test_filter_to_join_targets_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+def test_filter_to_join_targets_raises(filter_: BaseFilter, exception: type[Exception]) -> None:
     with pytest.raises(exception):
         filter_to_join_targets(filter_, AModel)

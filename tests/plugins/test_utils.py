@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -62,7 +62,7 @@ class FilterTest(BaseFilter):
         ("f", "__", {"f__a": None, "f__b__c": None, "f__b__d__e": None}),
     ]
 )
-def test_squash_filter(prefix: str, delimiter: str, res: Dict[str, Any]):
+def test_squash_filter(prefix: str, delimiter: str, res: dict[str, Any]):
     assert squash_filter(
         filter_=FilterTest,
         prefix=prefix, 
@@ -87,7 +87,7 @@ def test_squash_filter(prefix: str, delimiter: str, res: Dict[str, Any]):
         ),
     ]
 )
-def test_inflate_filter(prefix: str, delimiter: str, data: Dict[str, Any], res: Dict[str, Any]):
+def test_inflate_filter(prefix: str, delimiter: str, data: dict[str, Any], res: dict[str, Any]):
     assert inflate_filter(
         filter_=FilterTest,
         prefix=prefix, 

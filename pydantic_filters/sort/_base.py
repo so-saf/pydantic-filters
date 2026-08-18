@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from ._types import SortByOrder
@@ -8,7 +6,7 @@ from ._types import SortByOrder
 class BaseSort(BaseModel):
     """A Pydantic model describing a field and direction to sort by."""
 
-    sort_by: Optional[str] = None
+    sort_by: str | None = None
     """Field to sort by"""
 
     sort_by_order: SortByOrder = Field(SortByOrder.asc)

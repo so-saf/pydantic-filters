@@ -1,7 +1,7 @@
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any, TypeAlias
 
 import sqlalchemy as sa
-from typing_extensions import TypeAlias
 
 from pydantic_filters import FilterType, SearchType
 
@@ -65,7 +65,7 @@ def _op_case_insensitive_search(
     )
 
 
-_filter_type_to_operator_map: Dict[FilterType, ClauseOperator] = {
+_filter_type_to_operator_map: dict[FilterType, ClauseOperator] = {
     FilterType.eq: _op_eq,
     FilterType.ne: _op_ne,
     FilterType.gt: _op_from_method("__gt__"),
@@ -77,7 +77,7 @@ _filter_type_to_operator_map: Dict[FilterType, ClauseOperator] = {
     FilterType.null: _op_null,
 }
 
-_search_type_to_operator_map: Dict[SearchType, ClauseOperator] = {
+_search_type_to_operator_map: dict[SearchType, ClauseOperator] = {
     SearchType.case_sensitive: _op_case_sensitive_search,
     SearchType.case_insensitive: _op_case_insensitive_search,
 }

@@ -1,5 +1,3 @@
-from typing import List, Tuple
-
 import pytest
 from pydantic import ValidationError
 
@@ -13,11 +11,11 @@ def test_matching():
 
     class TestFilter(BaseFilter):
         f1: str
-        f2: List[str]
+        f2: list[str]
         f3: str = ...
 
         q1: str = SearchField(target=["f1"])
-        q2: List[str] = SearchField(target=["f1"])
+        q2: list[str] = SearchField(target=["f1"])
 
         n1: NestedFilter
         
@@ -127,8 +125,8 @@ def test_custom_delimiter_and_suffix_map_define_target_and_operator():
 def test_custom_sequence_types_are_used_by_filter_and_search_fields():
     class TupleFilter(BaseFilter):
         model_config = {**BaseFilter.model_config, "sequence_types": (list, set, tuple)}
-        values: Tuple[int, ...]
-        query: Tuple[str, ...] = SearchField(target=["name"])
+        values: tuple[int, ...]
+        query: tuple[str, ...] = SearchField(target=["name"])
 
     assert TupleFilter.filter_fields["values"].is_sequence is True
     assert TupleFilter.search_fields["query"].is_sequence is True
