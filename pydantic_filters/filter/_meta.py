@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Type, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     import annotationlib
@@ -14,7 +14,7 @@ from ._extractors import (
     SearchFieldExtractor,
     is_filter_subclass,
 )
-from ._fields import SearchFieldInfo
+from ._fields import FilterFieldInfo, SearchFieldInfo
 
 if TYPE_CHECKING:
     from ._base import BaseFilter
@@ -26,22 +26,23 @@ class FilterMetaclass(ModelMetaclass):
     def __new__(
             cls,
             name: str,
-            bases: Tuple[Type[Any], ...],
-            namespace: Dict[str, Any],
+            bases: tuple[type[Any], ...],
+            namespace: dict[str, Any],
             **kwargs: Any,  # noqa: ANN401
-    ) -> Type["BaseFilter"]:
+    ) -> type["BaseFilter"]:
         return cls.__new(name, bases, namespace, **kwargs)
 
     @classmethod
     def __new(
             cls,
             name: str,
-            bases: Tuple[Type[Any], ...],
-            namespace: Dict[str, Any],
+            bases: tuple[type[Any], ...],
+            namespace: dict[str, Any],
             **kwargs: Any,  # noqa: ANN401
-    ) -> Type["BaseFilter"]:
-        filter_class = cast(Type["BaseFilter"], super().__new__(cls, name, bases, namespace, **kwargs))
-        model_config: FilterConfigDict = filter_class.model_config
+    ) -> type["BaseFilter"]:
+        declared_defaults = dict(namespace)
+        filter_class = cast("type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
+        model_config = cast("FilterConfigDict", filter_class.model_config)
 
         nested_field_extractor = NestedFilterExtractor(
             optional=model_config["optional"],
@@ -62,12 +63,16 @@ class FilterMetaclass(ModelMetaclass):
             ),
         )
 
-        annotations: Dict[str, Any] = {}
+        annotations: dict[str, Any] = {}
         if annotationlib is not None:
-            annotate = annotationlib.get_annotate_from_class_namespace(namespace)
-            annotations = annotationlib.call_annotate_function(
-                annotate, annotationlib.Format.FORWARDREF,
-            )
+            get_annotate = getattr(annotationlib, "get_annotate_from_class_namespace")
+            annotate = get_annotate(namespace)
+            if annotate is not None:
+                call_annotate = getattr(annotationlib, "call_annotate_function")
+                format_ = getattr(annotationlib, "Format")
+                annotations = call_annotate(
+                    annotate, format_.FORWARDREF,
+                )
         elif "__annotations__" in namespace:
             annotations = namespace["__annotations__"]
         elif "__annotate_func__" in namespace:
@@ -80,26 +85,44 @@ class FilterMetaclass(ModelMetaclass):
             if field_name not in annotations:
                 continue
 
+            declared_default = declared_defaults.get(field_name)
+            explicitly_required = declared_default is Ellipsis or (
+                isinstance(declared_default, (FilterFieldInfo, SearchFieldInfo))
+                and declared_default.field_kwargs.get("default") is Ellipsis
+            )
+
             # when `a: NestedFilter` or `a: NestedFilter = NestedFilter(...)`
             if is_filter_subclass(field_info.annotation):
-                new_model_field, __nested_filter = nested_field_extractor(field_name, field_info)
+                new_model_field, __nested_filter = nested_field_extractor(
+                    field_name,
+                    field_info,
+                    explicitly_required=explicitly_required,
+                )
                 namespace[field_name] = new_model_field
                 nested_fields[field_name] = __nested_filter
                 continue
 
             # when `a: str = SearchField(...)`
             elif isinstance(field_info.default, SearchFieldInfo):
-                new_model_field, __search_field = search_field_extractor(field_name, field_info)
+                new_model_field, __search_field = search_field_extractor(
+                    field_name,
+                    field_info,
+                    explicitly_required=explicitly_required,
+                )
                 namespace[field_name] = new_model_field
                 search_fields[field_name] = __search_field
                 continue
 
             # Declared either with FilterField or without using custom fields at all
-            new_model_field, filter_field = filter_field_extractor(field_name, field_info)
+            new_model_field, filter_field = filter_field_extractor(
+                field_name,
+                field_info,
+                explicitly_required=explicitly_required,
+            )
             namespace[field_name] = new_model_field
             filter_fields[field_name] = filter_field
 
-        recreated_filter_class = cast(Type["BaseFilter"], super().__new__(cls, name, bases, namespace, **kwargs))
+        recreated_filter_class = cast("type[BaseFilter]", super().__new__(cls, name, bases, namespace, **kwargs))
         # Assigning a new value
         # It is the override that is used, the update method will update the parent field,
         # which will result in a common field for all inheritors of the BaseFilter class, which must be avoided

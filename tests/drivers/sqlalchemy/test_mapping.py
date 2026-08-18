@@ -1,5 +1,3 @@
-from typing import List, Type
-
 import pytest
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -34,13 +32,45 @@ class BModel(Base):
 BModelAliased: so.util.AliasedClass = so.aliased(BModel)  # type: ignore
 
 
+class LeafModel(Base):
+    __tablename__ = "leaf"
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+
+
+class MiddleModel(Base):
+    __tablename__ = "middle"
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    leaf_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(LeafModel.id))
+    leaf: so.Mapped[LeafModel] = so.relationship()
+
+
+class RootModel(Base):
+    __tablename__ = "root"
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    middle_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(MiddleModel.id))
+    middle: so.Mapped[MiddleModel] = so.relationship()
+
+
+class ArrayModel(Base):
+    __tablename__ = "array_model"
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    tags: so.Mapped[list[str]] = so.mapped_column(sa.ARRAY(sa.String))
+
+
+class NodeModel(Base):
+    __tablename__ = "node"
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    parent_id: so.Mapped[int | None] = so.mapped_column(sa.ForeignKey("node.id"))
+    parent: so.Mapped["NodeModel | None"] = so.relationship(remote_side="NodeModel.id")
+
+
 class AModel(Base):
     __tablename__ = 'a'
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     name: so.Mapped[str]
     b_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(BModel.id))
     b: so.Mapped[BModel] = so.relationship()
-    c: so.Mapped[List[CModel]] = so.relationship()
+    c: so.Mapped[list[CModel]] = so.relationship()
 
 
 class CFilter(BaseFilter):
@@ -56,17 +86,42 @@ class FilterTest(BaseFilter):
     id__lt: int
     name: str
     name__null: bool
-    name__n: List[str]
+    name__n: list[str]
     biba: str
 
     q1: str = SearchField(target=["name"])
     q1_2: str = SearchField(target=["id", "name"])
-    q2: List[str] = SearchField(target=["name"], type_=SearchType.case_sensitive)
+    q2: list[str] = SearchField(target=["name"], type_=SearchType.case_sensitive)
     q3: str = SearchField(target=["boba"])
 
     b: BFilter
     c: CFilter
     d: CFilter
+
+
+class LeafFilter(BaseFilter):
+    id: int
+
+
+class MiddleFilter(BaseFilter):
+    id: int
+    leaf: LeafFilter
+
+
+class RootFilter(BaseFilter):
+    middle: MiddleFilter
+
+
+class ArrayFilter(BaseFilter):
+    tags: str
+
+
+class ParentNodeFilter(BaseFilter):
+    id: int
+
+
+class NodeFilter(BaseFilter):
+    parent: ParentNodeFilter
 
 
 @pytest.mark.parametrize(
@@ -95,9 +150,20 @@ def test_filter_to_column_clauses(filter_: BaseFilter, res_clause: sa.BinaryExpr
         (FilterTest(q3="boba"), AttributeNotFoundSaDriverError),
     ]
 )
-def test_filter_to_column_clauses_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+def test_filter_to_column_clauses_raises(filter_: BaseFilter, exception: type[Exception]) -> None:
     with pytest.raises(exception):
         filter_to_column_clauses(filter_=filter_, model=AModel)
+
+
+def test_filter_to_column_clauses_skips_unset_fields() -> None:
+    assert filter_to_column_clauses(filter_=FilterTest(), model=AModel) == []
+
+
+def test_filter_to_column_clauses_uses_any_for_array_columns() -> None:
+    clauses = filter_to_column_clauses(filter_=ArrayFilter(tags="admin"), model=ArrayModel)
+
+    assert len(clauses) == 1
+    assert clauses[0].compare(ArrayModel.tags.any_() == "admin")
 
 
 @pytest.mark.parametrize(
@@ -118,12 +184,41 @@ def test_filter_to_join_targets(filter_: BaseFilter, res_join_params: JoinParams
     assert joint_targets[0].on_clause.compare(res_join_params.on_clause)
 
 
+def test_filter_to_join_targets_recurses_through_aliased_models() -> None:
+    targets = filter_to_join_targets(
+        RootFilter(middle=MiddleFilter(id=2, leaf=LeafFilter(id=3))),
+        RootModel,
+    )
+
+    assert len(targets) == 2
+    middle_alias = targets[0].target
+    leaf_alias = targets[1].target
+    assert sa.inspect(middle_alias).mapper.class_ is MiddleModel
+    assert sa.inspect(leaf_alias).mapper.class_ is LeafModel
+    assert targets[0].on_clause.compare(
+        sa.and_(RootModel.middle_id == middle_alias.id, middle_alias.id == 2),
+    )
+    assert targets[1].on_clause.compare(
+        sa.and_(middle_alias.leaf_id == leaf_alias.id, leaf_alias.id == 3),
+    )
+
+
+def test_filter_to_join_targets_preserves_root_side_of_self_relationship() -> None:
+    targets = filter_to_join_targets(NodeFilter(parent=ParentNodeFilter(id=2)), NodeModel)
+
+    assert len(targets) == 1
+    parent_alias = targets[0].target
+    assert targets[0].on_clause.compare(
+        sa.and_(NodeModel.parent_id == parent_alias.id, parent_alias.id == 2),
+    )
+
+
 @pytest.mark.parametrize(
     "filter_, exception",
     [
         (FilterTest(d=CFilter(id=1)), RelationshipNotFoundSaDriverError),
     ],
 )
-def test_filter_to_join_targets_raises(filter_: BaseFilter, exception: Type[Exception]) -> None:
+def test_filter_to_join_targets_raises(filter_: BaseFilter, exception: type[Exception]) -> None:
     with pytest.raises(exception):
         filter_to_join_targets(filter_, AModel)

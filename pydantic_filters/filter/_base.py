@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar, Dict, Type
+from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import BaseModel
 
@@ -16,19 +16,19 @@ class BaseFilter(BaseModel, metaclass=FilterMetaclass):
     """
 
     if TYPE_CHECKING:
-        filter_fields: ClassVar[Dict[str, "FilterFieldInfo"]]
+        filter_fields: ClassVar[dict[str, "FilterFieldInfo"]]
         """
         Metadata about the filters fields defined on the model,
         mapping of field names to [`FilterFieldInfo`][pydantic_filters.filter._fields.FilterFieldInfo] objects.
         """
 
-        search_fields: ClassVar[Dict[str, "SearchFieldInfo"]]
+        search_fields: ClassVar[dict[str, "SearchFieldInfo"]]
         """
         Metadata about the search fields defined on the model,
         mapping of field names to [`SearchFieldInfo`][pydantic_filters.filter._fields.SearchFieldInfo] objects.
         """
 
-        nested_filters: ClassVar[Dict[str, Type["BaseFilter"]]]
+        nested_filters: ClassVar[dict[str, type["BaseFilter"]]]
         """
         Metadata about the nested filters defined on the model,
         mapping of field names to [`BaseFilter`][pydantic_filters.filter._base.BaseFilter] objects.

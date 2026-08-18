@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Any
 
 from pydantic_core import PydanticUndefined
 
@@ -6,17 +7,17 @@ from ._types import FilterType, FilterTypeLiteral, SearchType, SearchTypeLiteral
 
 
 class BaseField:
-    __field_kwargs: Optional[Dict[str, Any]]
+    __field_kwargs: dict[str, Any]
 
     __slots__ = (
         "__field_kwargs",
     )
 
-    def __init__(self, *, field_kwargs: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, *, field_kwargs: dict[str, Any] | None = None) -> None:
         self.__field_kwargs = field_kwargs or {}
 
     @property
-    def field_kwargs(self) -> Dict[str, Any]:
+    def field_kwargs(self) -> dict[str, Any]:
         """
         Get arguments for pydantic.FieldInfo creating.
         """
@@ -29,7 +30,7 @@ class BaseField:
             if not item.startswith("__")
         )
 
-    def __repr_args(self) -> List[Tuple[str, Any]]:
+    def __repr_args(self) -> list[tuple[str, Any]]:
         attrs = (
             (s, getattr(self, s))
             for s in self.__slots__
@@ -81,10 +82,10 @@ class FilterFieldInfo(BaseField):
     def __init__(
             self,
             *,
-            target: Optional[str] = None,
-            type_: Optional[FilterType] = None,
-            is_sequence: Optional[bool] = None,
-            field_kwargs: Optional[Dict[str, Any]] = None,
+            target: str | None = None,
+            type_: FilterType | None = None,
+            is_sequence: bool | None = None,
+            field_kwargs: dict[str, Any] | None = None,
     ) -> None:
         self.target = target
         self.type = type_
@@ -122,9 +123,9 @@ class SearchFieldInfo(BaseField):
             self,
             *,
             target: Sequence[str],
-            type_: Optional[SearchType] = None,
-            is_sequence: Optional[bool] = None,
-            field_kwargs: Optional[Dict[str, Any]] = None,
+            type_: SearchType | None = None,
+            is_sequence: bool | None = None,
+            field_kwargs: dict[str, Any] | None = None,
     ) -> None:
 
         if not target:
@@ -141,8 +142,8 @@ class SearchFieldInfo(BaseField):
 def FilterField(  # noqa: N802
         default: Any = PydanticUndefined,  # noqa: ANN401
         *,
-        target: Optional[str] = None,
-        type_: Union[FilterTypeLiteral, FilterType, None] = None,
+        target: str | None = None,
+        type_: FilterTypeLiteral | FilterType | None = None,
         **field_kwargs: Any,  # noqa: ANN003
 ) -> FilterFieldInfo:
     """
@@ -172,7 +173,7 @@ def SearchField(  # noqa: N802
         default: Any = PydanticUndefined,  # noqa: ANN401
         *,
         target: Sequence[str],
-        type_: Union[SearchTypeLiteral, SearchType, None] = None,
+        type_: SearchTypeLiteral | SearchType | None = None,
         **field_kwargs: Any,  # noqa: ANN003
 ) -> SearchFieldInfo:
     """

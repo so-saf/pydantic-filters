@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  DEFAULT_PYTHON: "3.12"
+  DEFAULT_PYTHON: "3.13"
 
 jobs:
   pytest:
@@ -17,61 +17,134 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.9", "3.10", "3.11", "3.12"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v4.1.6
-      - name: Set up Poetry
-        run: pipx install poetry
-      - name: Set up Python ${{ matrix.python }}
-        id: python
-        uses: actions/setup-python@v5.1.0
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ matrix.python }}
-          cache: "poetry"
-      - name: Install workflow dependencies
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
+          version: "0.12.1"
+          enable-cache: true
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync --locked --group dev --python ${{ matrix.python }}
       - name: Run pytest
-        run: poetry run pytest --cov pydantic_filters tests
+        run: uv run --no-sync pytest --cov pydantic_filters tests
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4.3.3
         with:
           name: coverage-${{ matrix.python }}
           path: .coverage
 
+  pydantic-core-compatibility:
+    name: Core / Pydantic ${{ matrix.pydantic }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pydantic: ["2.0.2", "2.9.2", "2.13.4"]
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Run core compatibility suite
+        run: |
+          uv run --isolated --no-project --python 3.10 \
+            --with "pydantic==${{ matrix.pydantic }}" \
+            --with "pytest>=8,<9" \
+            --with "sqlalchemy>1.4,<3" \
+            python -m pytest -q \
+              tests/drivers tests/filter tests/pagination tests/sort tests/test_misc.py
+
+  fastapi-compatibility:
+    name: FastAPI ${{ matrix.fastapi }} / Pydantic ${{ matrix.pydantic }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - fastapi: "0.100.0"
+            pydantic: "2.0.2"
+          - fastapi: "0.141.1"
+            pydantic: "2.13.4"
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Run FastAPI compatibility suite
+        run: |
+          uv run --isolated --no-project --python 3.10 \
+            --with "fastapi==${{ matrix.fastapi }}" \
+            --with "pydantic==${{ matrix.pydantic }}" \
+            --with "httpx2>=2.11,<3" \
+            --with "pytest>=8,<9" \
+            python -m pytest -q tests/plugins
+
+  package:
+    name: Package smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Build wheel and source distribution
+        run: uv build
+      - name: Check wheel contents
+        run: |
+          wheel=$(find dist -name '*.whl' -print -quit)
+          if unzip -Z1 "${wheel}" | grep -Eq '^(tests/|\.github/)'; then
+            echo "Wheel contains development-only files"
+            exit 1
+          fi
+          if ! unzip -Z1 "${wheel}" | grep -qx 'pydantic_filters/py.typed'; then
+            echo "Wheel does not contain the PEP 561 marker"
+            exit 1
+          fi
+      - name: Install and import wheel
+        run: |
+          wheel=$(find dist -name '*.whl' -print -quit)
+          uv venv --python "${DEFAULT_PYTHON}" /tmp/pydantic-filters-wheel
+          uv pip install --python /tmp/pydantic-filters-wheel/bin/python "${wheel}"
+          /tmp/pydantic-filters-wheel/bin/python -c "from pydantic_filters import BaseFilter; assert BaseFilter.__name__ == 'BaseFilter'"
+      - name: Install and import source distribution
+        run: |
+          sdist=$(find dist -name '*.tar.gz' -print -quit)
+          uv venv --python "${DEFAULT_PYTHON}" /tmp/pydantic-filters-sdist
+          uv pip install --python /tmp/pydantic-filters-sdist/bin/python "${sdist}"
+          /tmp/pydantic-filters-sdist/bin/python -c "from pydantic_filters import BaseFilter; assert BaseFilter.__name__ == 'BaseFilter'"
+
   coverage:
     runs-on: ubuntu-latest
     needs: pytest
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v4.1.6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Download coverage data
-        uses: actions/download-artifact@v4.1.7
-      - name: Set up Poetry
-        run: pipx install poetry
-      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        id: python
-        uses: actions/setup-python@v5.1.0
+        uses: actions/download-artifact@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ env.DEFAULT_PYTHON }}
-          cache: "poetry"
-      - name: Install workflow dependencies
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
+          version: "0.12.1"
+          enable-cache: true
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync --locked --group dev --python ${{ env.DEFAULT_PYTHON }}
       - name: Process coverage results
         run: |
-          poetry run coverage combine coverage*/.coverage*
-          poetry run coverage xml -i
+          uv run --no-sync coverage combine coverage*/.coverage*
+          uv run --no-sync coverage xml -i
       - name: Upload coverage report
-        uses: codecov/codecov-action@v4.4.0
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

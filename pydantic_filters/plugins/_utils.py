@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Dict, Type, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic_filters.filter._base import BaseFilter
 
@@ -28,10 +28,10 @@ def remove_prefix(item: str, prefix: str, delimiter: str) -> str:
 
 
 def squash_filter(
-        filter_: Type[_Filter],
+        filter_: type[_Filter],
         prefix: str,
         delimiter: str,
-) -> Dict[str, "FieldInfo"]:
+) -> dict[str, "FieldInfo"]:
     """
     **Example:**
 
@@ -66,10 +66,10 @@ def squash_filter(
 
 
 def inflate_filter(
-        filter_: Type[_Filter],
+        filter_: type[_Filter],
         prefix: str,
         delimiter: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
 ) -> _Filter:
     """
     **Example:**
@@ -86,8 +86,8 @@ def inflate_filter(
     MyFilter(a=1, b=NestedFilter(c=2, d=DeepNestedFilter(e=3)))
     """
 
-    to_construct: Dict[str, Any] = {}
-    nested_kwargs: Dict[str, Any] = {}
+    to_construct: dict[str, Any] = {}
+    nested_kwargs: dict[str, Any] = {}
     for k, v in data.items():
         if v is None:
             continue

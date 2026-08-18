@@ -11,8 +11,6 @@ exclude = [
 ]
 
 ignore = [
-    "ANN101",
-    "ANN102",
     "ANN401",
 ]
 

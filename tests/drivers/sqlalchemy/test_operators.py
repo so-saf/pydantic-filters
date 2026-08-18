@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 import sqlalchemy as sa
@@ -75,6 +75,7 @@ def test_op_ne(is_sequence: bool, obj: Any, res_clause: sa.BinaryExpression[bool
         (False, 0, ModelTest.id.is_not(None)),
         (True, [False, False], ModelTest.id.is_not(None)),
         (True, [0, ''], ModelTest.id.is_not(None)),
+        (True, [], ModelTest.id.is_not(None)),
         (True, [True, False], ModelTest.id.is_(None)),
         (True, ['1', ''], ModelTest.id.is_(None)),
         (True, [True, True], ModelTest.id.is_(None)),
@@ -110,6 +111,11 @@ def test_op_case_sensitive_search(is_sequence: bool, obj: Any, res_clause: sa.Bi
 def test_op_case_insensitive_search(is_sequence: bool, obj: Any, res_clause: sa.BinaryExpression[bool]):
     clause = _op_case_insensitive_search(ModelTest.id, is_sequence, obj)
     assert clause.compare(res_clause)
+
+
+@pytest.mark.parametrize("operator", [_op_case_sensitive_search, _op_case_insensitive_search])
+def test_empty_search_sequence_is_always_false(operator):
+    assert operator(ModelTest.id, True, []).compare(sa.false())
     
 
 @pytest.mark.parametrize(
@@ -119,5 +125,5 @@ def test_op_case_insensitive_search(is_sequence: bool, obj: Any, res_clause: sa.
         (_search_type_to_operator_map, SearchType),
     ]
 )
-def test_fullness_map(map_: Dict, enum):
+def test_fullness_map(map_: dict, enum):
     assert set(map_.keys()) == set(enum)

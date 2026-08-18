@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Type, TypeVar
+from typing import Any, TypeVar
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -17,12 +17,12 @@ _Filter = TypeVar("_Filter", bound=BaseFilter)
 _Pagination = TypeVar("_Pagination", bound=BasePagination)
 _Sort = TypeVar("_Sort", bound=BaseSort)
 _Model = TypeVar("_Model", bound=so.DeclarativeBase)
-_T = TypeVar("_T")
+_T = TypeVar("_T", bound=tuple[Any, ...])
 
 
 def append_filter_to_statement(
         statement: sa.Select[_T],
-        model: Type[_Model],
+        model: type[_Model],
         filter_: _Filter,
 ) -> sa.Select[_T]:
     """
@@ -76,7 +76,7 @@ def append_pagination_to_statement(
 
 def append_sort_to_statement(
         statement: sa.Select[_T],
-        model: Type[_Model],
+        model: type[_Model],
         sort: _Sort,
 ) -> sa.Select[_T]:
     """
@@ -95,7 +95,7 @@ def append_sort_to_statement(
         return statement
 
     try:
-        column: sa.ColumnElement = getattr(model, str(sort.sort_by))
+        column: sa.ColumnElement = getattr(model, sort.sort_by)
     except AttributeError as e:
         raise AttributeNotFoundSaDriverError(
             f"{sort.__class__.__name__}.sort_by: "
@@ -109,11 +109,11 @@ def append_sort_to_statement(
 
 def append_to_statement(
         statement: sa.Select[_T],
-        model: Type[_Model],
+        model: type[_Model],
         *,
-        filter_: Optional[_Filter] = None,
-        sort: Optional[_Sort] = None,
-        pagination: Optional[_Pagination] = None,
+        filter_: _Filter | None = None,
+        sort: _Sort | None = None,
+        pagination: _Pagination | None = None,
 ) -> sa.Select[_T]:
     """
     All in one function.
@@ -141,9 +141,9 @@ def append_to_statement(
 
 
 def get_count_statement(
-        model: Type[_Model],
+        model: type[_Model],
         filter_: _Filter,
-) -> sa.Select[_T]:
+) -> sa.Select[tuple[int]]:
     """
     Get count statement.
 
@@ -157,7 +157,7 @@ def get_count_statement(
         SupportSaDriverError: Composite primary keys are not supported.
     """
 
-    primary_key: Tuple[sa.ColumnElement, ...] = sa.inspect(model).primary_key
+    primary_key: tuple[sa.ColumnElement, ...] = sa.inspect(model).primary_key
     if len(primary_key) > 1:
         raise SupportSaDriverError("Composite primary keys are not supported")
 

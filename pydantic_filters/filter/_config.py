@@ -1,18 +1,16 @@
-from typing import Dict, Tuple, Type
-
 from pydantic import ConfigDict
 
 from ._types import FilterType, SearchType
 
 
 class FilterConfigDict(ConfigDict, total=False):
-    """A TypedDict for configuring filtering"""
+    """A TypedDict for configuring filtering."""
 
     delimiter: str
     """A delimiter before the suffix."""
 
     optional: bool
-    """Make all fields optional"""
+    """Make otherwise-required fields optional."""
 
     default_filter_type: FilterType
     """
@@ -27,8 +25,8 @@ class FilterConfigDict(ConfigDict, total=False):
     [`SearchField`][pydantic_filters.filter._fields.SearchField].
     """
 
-    suffixes_map: Dict[str, FilterType]
-    """Suffix mapping to filter type"""
+    suffixes_map: dict[str, FilterType]
+    """Mapping of recognized suffixes to filter types."""
 
-    sequence_types: Tuple[Type, ...]
-    """Types that are considered sequences"""
+    sequence_types: tuple[type, ...]
+    """Annotation origins that are considered sequences."""

@@ -1,8 +1,6 @@
 from copy import deepcopy
 from enum import Enum
-from typing import Dict, Literal
-
-from typing_extensions import TypeAlias
+from typing import Literal, TypeAlias
 
 
 class FilterType(str, Enum):
@@ -15,13 +13,13 @@ class FilterType(str, Enum):
     null = "null"
     """Is null"""
     gt = "gt"
-    """Grater than"""
+    """Greater than."""
     ge = "ge"
-    """Grater than or equal"""
+    """Greater than or equal."""
     lt = "lt"
-    """Lower than"""
+    """Less than."""
     le = "le"
-    """Lower than or equal"""
+    """Less than or equal."""
     like = "like"
     """Case-sensitive matching"""
     ilike = "ilike"
@@ -68,7 +66,7 @@ SearchTypeLiteral: TypeAlias = Literal[
 Literal alias for [`SearchType`][pydantic_filters.filter._types.SearchType]
 """
 
-_suffixes_map: Dict[str, FilterType] = {
+_suffixes_map: dict[str, FilterType] = {
     "eq": FilterType.eq,
     "n": FilterType.ne,
     "ne": FilterType.ne,
@@ -88,9 +86,10 @@ _suffixes_map: Dict[str, FilterType] = {
 }
 
 
-def get_suffixes_map() -> Dict[str, FilterType]:
+def get_suffixes_map() -> dict[str, FilterType]:
     """
-    Returns the standard set of synonyms defined in
-    [`_suffixes_map`][pydantic_filters.filter._types._suffixes_map]
+    Return a copy of the standard suffix-to-filter-type mapping.
+
+    Mutating the returned dictionary does not change the library defaults.
     """
     return deepcopy(_suffixes_map)
