@@ -1,121 +1,77 @@
-
 # pydantic-filters
 
 [![Testing](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml/badge.svg)](https://github.com/so-saf/pydantic-filters/actions/workflows/test.yaml)
 [![Coverage](https://codecov.io/gh/so-saf/pydantic-filters/branch/master/graph/badge.svg)](https://codecov.io/gh/so-saf/pydantic-filters)
-[![pypi](https://img.shields.io/pypi/v/pydantic-filters.svg)](https://pypi.python.org/pypi/pydantic-filters)
-[![license](https://img.shields.io/github/license/so-saf/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters/blob/main/LICENSE)
-[![versions](https://img.shields.io/pypi/pyversions/pydantic-filters.svg)](https://github.com/so-saf/pydantic-filters)
+[![PyPI](https://img.shields.io/pypi/v/pydantic-filters.svg)](https://pypi.org/project/pydantic-filters/)
+[![Python](https://img.shields.io/pypi/pyversions/pydantic-filters.svg)](https://pypi.org/project/pydantic-filters/)
+[![License](https://img.shields.io/github/license/so-saf/pydantic-filters.svg)](LICENSE)
+
+Define filters as Pydantic models, then translate them into queries with a
+driver. The package also provides reusable pagination and sorting models and a
+FastAPI integration.
 
 **Documentation:** https://so-saf.github.io/pydantic-filters/
 
-**Source Code:** https://github.com/so-saf/pydantic-filters
+## Requirements
 
----
+- Python 3.10 or newer, including Python 3.14 and 3.15
+- Pydantic 2
+- SQLAlchemy 2 or newer when using the SQLAlchemy driver
+- FastAPI 0.100 or newer when using the FastAPI plugin
 
-Describe the filters, not implement them! 
-A declarative and intuitive way to describe data filtering and sorting in your application.
-
-# Features
-
-- Filtering by the models themselves as well as by related.
-- Built-in pagination and sorting.
-- Lots of settings and possible customizations.
-- The only required dependency is Pydantic.
-You can use the basic features without being attached to specific frameworks, 
-or use one of the supported plugins and drivers: 
-  - Plugins:
-    - FastAPI >= 0.100.0
-  - Drivers: 
-    - SQLAlchemy >= 2
-
-# Installation
+Only Pydantic is a required dependency. Install integrations separately:
 
 ```shell
 pip install pydantic-filters
+pip install "pydantic-filters" "sqlalchemy>=2"
+pip install "pydantic-filters" "fastapi>=0.100"
 ```
 
-# A Simple Example
-
-`BaseFilter` is just a pydantic model, it should be treated similarly
-
-Let's imagine you have a simple user service with the following SQLAlchemy model:
-
+## Quick start
 
 ```python
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+import sqlalchemy as sa
+import sqlalchemy.orm as so
+
+from pydantic_filters import BaseFilter
+from pydantic_filters.drivers.sqlalchemy import append_filter_to_statement
 
 
-class Base(DeclarativeBase):
+class Base(so.DeclarativeBase):
     pass
 
 
 class User(Base):
     __tablename__ = "users"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
-    age: Mapped[int]
-```
 
-Describe how you would like to filter users using BaseFilter.
-
-```python
-from typing import List
-from pydantic_filters import BaseFilter
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    name: so.Mapped[str]
+    age: so.Mapped[int]
 
 
 class UserFilter(BaseFilter):
-    id: List[int]
-    name: List[str]
+    id: list[int]
     name__ilike: str
-    age__lt: int
-    age__gt: int
-```
+    age__ge: int
 
-`BaseFilter` is just a pydantic model, it should be treated similarly
 
-Next, you need to apply a filter to some query:
-
-```python
-from sqlalchemy import select
-from pydantic_filters.drivers.sqlalchemy import append_filter_to_statement
-
-statement = select(User)
-filter_ = UserFilter(name__ilike="kate", age__lt=23)
-
-stmt = append_filter_to_statement(
-    statement=statement, model=User, filter_=filter_,
+filter_ = UserFilter(name__ilike="kate", age__ge=18)
+statement = append_filter_to_statement(
+    statement=sa.select(User),
+    model=User,
+    filter_=filter_,
 )
 ```
 
-And get something like:
+The statement contains conditions equivalent to:
 
 ```sql
-SELECT users.id, users.name, users.age 
-FROM users 
-WHERE users.name ILIKE 'kate' AND users.age < 23
+WHERE users.name ILIKE 'kate' AND users.age >= 18
 ```
 
-The filter can be used in conjunction with one of the supported web frameworks:
+Filter fields are not required by default, and fields that were not supplied
+are ignored by the driver. See the documentation for:
 
-```python
-from typing import Annotated
-from fastapi import FastAPI, APIRouter
-from pydantic_filters.plugins.fastapi import FilterDepends
-
-
-router = APIRouter()
-
-
-@router.get("/")
-async def get_multiple(
-    filter_: Annotated[UserFilter, FilterDepends(UserFilter)],
-):
-    ...
-
-
-app = FastAPI(title="User Service")
-app.include_router(router, prefix="/users", tags=["User"])
-```
-
-![fastapi-simple-example.png](docs/docs/images/fastapi-simple-example.png)
+- [operators, search fields, nested filters, and configuration](https://so-saf.github.io/pydantic-filters/usage/filters/);
+- [SQLAlchemy filtering, counting, sorting, and pagination](https://so-saf.github.io/pydantic-filters/usage/sqlalchemy/);
+- [FastAPI query-parameter integration](https://so-saf.github.io/pydantic-filters/usage/fastapi/).

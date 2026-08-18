@@ -1,9 +1,18 @@
+# SQLAlchemy
 
-`SQLAlchemy` acts as a driver for working with the database. As in any ORM, let's define the models:
+The bundled SQLAlchemy driver translates filter metadata into SQLAlchemy
+`Select` expressions. Install SQLAlchemy separately:
+
+```shell
+pip install "pydantic-filters" "sqlalchemy>=2"
+```
+
+The examples below use SQLAlchemy 2 declarative models:
 
 ```python
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+
 
 class Base(so.DeclarativeBase):
     pass
@@ -11,199 +20,178 @@ class Base(so.DeclarativeBase):
 
 class Department(Base):
     __tablename__ = "departments"
-    
+
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    chef_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("users.id"))
+    name: so.Mapped[str]
 
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     login: so.Mapped[str]
     full_name: so.Mapped[str]
     age: so.Mapped[int]
-    email: so.Mapped[str]
-    department_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("departments.id"))
-
+    department_id: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey("departments.id"),
+    )
     department: so.Mapped[Department] = so.relationship()
 ```
 
-## Filter
+## Filtering
 
-Define filters and use [`append_filter_to_statement`][pydantic_filters.drivers.sqlalchemy.append_filter_to_statement]:
+Define filter fields whose targets match model attributes. A nested filter field
+must match a relationship name:
 
 ```python
-from typing import List
-
 from pydantic_filters import BaseFilter, SearchField
 
 
 class DepartmentFilter(BaseFilter):
-    chef_id: List[int]
+    name: list[str]
 
 
 class UserFilter(BaseFilter):
-    login: List[str]
-    age__lt: int
-    department_id: List[int]
+    login: list[str]
+    age__ge: int
     q: str = SearchField(target=["login", "full_name"])
     department: DepartmentFilter
 ```
 
-### Simple filtration
+Apply the filter with
+[`append_filter_to_statement`][pydantic_filters.drivers.sqlalchemy.append_filter_to_statement]:
 
 ```python
 from pydantic_filters.drivers.sqlalchemy import append_filter_to_statement
 
-stmt = append_filter_to_statement(
+
+statement = append_filter_to_statement(
     statement=sa.select(User),
     model=User,
-    filter_=UserFilter(login=["alice", "bob"], q="Eva"),
+    filter_=UserFilter(login=["alice", "bob"], q="eva"),
 )
-print(stmt)
 ```
+
+It adds conditions equivalent to:
 
 ```sql
-SELECT users.id, users.login, users.full_name, users.age, users.department_id
-FROM users 
-WHERE users.login IN ('alice', 'bob') 
-  AND (users.login ILIKE '%Eva%' OR users.full_name ILIKE '%Eva%')
+WHERE users.login IN ('alice', 'bob')
+  AND (users.login ILIKE '%eva%' OR users.full_name ILIKE '%eva%')
 ```
 
-### Joined filtration
+Only explicitly supplied fields are applied. Empty equality sequences match no
+rows, empty inequality sequences match every row, and empty search sequences
+match no rows.
 
-Almost the same thing:
+### Related models
+
+Supplying a nested filter adds a join with the nested conditions in its
+`ON` clause:
 
 ```python
-stmt = append_filter_to_statement(
+statement = append_filter_to_statement(
     statement=sa.select(User),
     model=User,
-    filter_=UserFilter(login=["alice", "bob"], department=DepartmentFilter(chef_id=[5])),
+    filter_=UserFilter(
+        login=["alice", "bob"],
+        department=DepartmentFilter(name=["Engineering"]),
+    ),
 )
-print(stmt)
 ```
 
-```sql
-SELECT users.id, users.login, users.full_name, users.age, users.department_id 
-FROM users 
-    JOIN departments AS departments_1 
-        ON users.department_id = departments_1.id AND departments_1.chef_id IN (5) 
-WHERE users.login IN ('alice', 'bob')
+The joined relationship is used for filtering but is not automatically loaded
+into the returned objects. Add the appropriate SQLAlchemy loader option when
+the application also needs the related object:
+
+```python
+statement = statement.options(so.joinedload(User.department))
 ```
 
-!!! note
+Nested joins support multiple levels, self-referential relationships,
+many-to-many relationships through `secondary`, and composite foreign keys.
 
-    It should be noted that joined tables will not be included in the final result.
-    You can use `sqlalchemy.orm.joinedload()` to get a second join:
-    
-    ```python
-    stmt = append_filter_to_statement(
-        statement=sa.select(User),
-        model=User,
-        filter_=UserFilter(login=["alice", "bob"], department=DepartmentFilter(chef_id=[5])),
-    )
-    stmt = stmt.options(so.joinedload(User.department))
-    print(stmt)
-    ```
+## Counting
 
-    ```sql
-    SELECT users.id, users.login, users.full_name, users.age, users.department_id, departments_1.id AS id_1, departments_1.chef_id 
-    FROM users 
-        JOIN departments AS departments_2 
-            ON users.department_id = departments_2.id AND departments_2.chef_id IN (5) 
-        LEFT OUTER JOIN departments AS departments_1 ON departments_1.id = users.department_id 
-    WHERE users.login IN ('alice', 'bob')
-    ```
-
-### Get count
-
-You can also get a statement to get the number of rows satisfying the filter by using the function
-[`get_count_statement()`][pydantic_filters.drivers.sqlalchemy.get_count_statement]:
+[`get_count_statement`][pydantic_filters.drivers.sqlalchemy.get_count_statement]
+counts distinct primary-key values after applying a filter:
 
 ```python
 from pydantic_filters.drivers.sqlalchemy import get_count_statement
 
-count_stmt = get_count_statement(
+
+count_statement = get_count_statement(
     model=User,
-    filter_=UserFilter(login=["alice", "bob"], department=DepartmentFilter(chef_id=[5])),
+    filter_=UserFilter(department=DepartmentFilter(name=["Engineering"])),
 )
-print(count_stmt)
 ```
 
-```sql
-SELECT count(DISTINCT users.id) AS count_1 
-FROM users 
-    JOIN departments AS departments_1 
-        ON users.department_id = departments_1.id AND departments_1.chef_id IN (5) 
-WHERE users.login IN ('alice', 'bob')
-```
+Composite primary keys are not supported by this helper and raise
+[`SupportSaDriverError`][pydantic_filters.drivers.sqlalchemy.SupportSaDriverError].
 
 ## Pagination
 
-There is a similar function for pagination 
-[`append_pagination_to_statement()`][pydantic_filters.drivers.sqlalchemy.append_pagination_to_statement]:
+Use
+[`append_pagination_to_statement`][pydantic_filters.drivers.sqlalchemy.append_pagination_to_statement]
+with any `BasePagination` implementation:
 
 ```python
 from pydantic_filters import OffsetPagination
 from pydantic_filters.drivers.sqlalchemy import append_pagination_to_statement
 
-stmt = append_pagination_to_statement(
+
+statement = append_pagination_to_statement(
     statement=sa.select(User),
-    pagination=OffsetPagination(limit=1000, offset=4000),
+    pagination=OffsetPagination(limit=25, offset=50),
 )
-print(stmt)
 ```
 
-```sql
-SELECT users.id, users.login, users.full_name, users.age, users.department_id 
-FROM users 
-LIMIT 1000 OFFSET 4000
-```
+This adds `LIMIT 25 OFFSET 50`.
 
-## Sort
+## Sorting
 
-And for Sort [`append_sort_to_statement()`][pydantic_filters.drivers.sqlalchemy.append_sort_to_statement]:
+Use [`append_sort_to_statement`][pydantic_filters.drivers.sqlalchemy.append_sort_to_statement]
+with a sort model:
 
 ```python
 from pydantic_filters import BaseSort, SortByOrder
 from pydantic_filters.drivers.sqlalchemy import append_sort_to_statement
 
-stmt = append_sort_to_statement(
+
+statement = append_sort_to_statement(
     statement=sa.select(User),
     model=User,
     sort=BaseSort(sort_by="login", sort_by_order=SortByOrder.desc),
 )
-print(stmt)
 ```
 
-```sql
-SELECT users.id, users.login, users.full_name, users.age, users.department_id 
-FROM users 
-ORDER BY users.login DESC
-```
+This adds `ORDER BY users.login DESC`. When `sort_by` is `None`, the statement
+is returned unchanged.
 
-## All in one
+## Combine all operations
 
-[`append_to_statement()`][pydantic_filters.drivers.sqlalchemy.append_to_statement] - all-in-one function:
+[`append_to_statement`][pydantic_filters.drivers.sqlalchemy.append_to_statement]
+applies filtering, then sorting, then pagination. Every operation is optional:
 
 ```python
 from pydantic_filters.drivers.sqlalchemy import append_to_statement
 
-stmt = append_to_statement(
+
+statement = append_to_statement(
     statement=sa.select(User),
     model=User,
-    filter_=UserFilter(q="Eva"),
-    pagination=OffsetPagination(limit=10),
+    filter_=UserFilter(q="eva"),
     sort=BaseSort(sort_by="login"),
+    pagination=OffsetPagination(limit=10),
 )
-print(stmt)
 ```
 
-```sql
-SELECT users.id, users.login, users.full_name, users.age, users.department_id 
-FROM users 
-WHERE users.login ILIKE '%%Eva%%' OR users.full_name ILIKE '%%Eva%%' 
-ORDER BY users.login ASC 
-LIMIT 10 OFFSET 0
-```
+## Driver errors
+
+The driver raises focused exceptions for invalid metadata or unsupported cases:
+
+- [`AttributeNotFoundSaDriverError`][pydantic_filters.drivers.sqlalchemy.AttributeNotFoundSaDriverError]
+  when a filter, search, or sort target does not exist;
+- [`RelationshipNotFoundSaDriverError`][pydantic_filters.drivers.sqlalchemy.RelationshipNotFoundSaDriverError]
+  when a nested filter has no matching relationship;
+- [`SupportSaDriverError`][pydantic_filters.drivers.sqlalchemy.SupportSaDriverError]
+  for unsupported operations such as counting a composite primary key.

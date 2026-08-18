@@ -92,9 +92,9 @@ extra:
 nav:
   - Welcome: 'index.md'
   - Usage:
-      - Filter: 'usage/filters.md'
+      - Filters: 'usage/filters.md'
       - Pagination: 'usage/pagination.md'
-      - Sort: 'usage/sort.md'
+      - Sorting: 'usage/sort.md'
       - Plugins:
           - FastAPI: 'usage/fastapi.md'
       - Drivers:

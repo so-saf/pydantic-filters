@@ -6,13 +6,13 @@ from ._types import FilterType, SearchType
 
 
 class FilterConfigDict(ConfigDict, total=False):
-    """A TypedDict for configuring filtering"""
+    """A TypedDict for configuring filtering."""
 
     delimiter: str
     """A delimiter before the suffix."""
 
     optional: bool
-    """Make all fields optional"""
+    """Make otherwise-required fields optional."""
 
     default_filter_type: FilterType
     """
@@ -28,7 +28,7 @@ class FilterConfigDict(ConfigDict, total=False):
     """
 
     suffixes_map: Dict[str, FilterType]
-    """Suffix mapping to filter type"""
+    """Mapping of recognized suffixes to filter types."""
 
     sequence_types: Tuple[Type, ...]
-    """Types that are considered sequences"""
+    """Annotation origins that are considered sequences."""

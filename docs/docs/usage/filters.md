@@ -1,277 +1,197 @@
+# Filters
 
-# Filter
-
-## Introduction
-
-Any web application manipulates data and pydantic models help a lot in this. 
-They accompany our application from validating the data in the API to serializing it in a query in the database.
-So pydantic models are some abstract schemas running back and forth. At least that's how I see it :) 
-The same way can apply in filtering: define a schema and use it.
-
-## Basic BaseFilter usage
-
-[`BaseFilter`][pydantic_filters.BaseFilter] is a pydantic model.
-
-Let's define a user schema and filters to it:
+[`BaseFilter`][pydantic_filters.BaseFilter] is a Pydantic model that also stores
+the metadata a driver needs to build a query. Define normal typed fields and
+instantiate the filter with values supplied by your application.
 
 ```python
-from typing import List
-
-from pydantic import BaseModel
 from pydantic_filters import BaseFilter, SearchField
-
-class UserSchema(BaseModel):
-    id: int
-    login: str
-    full_name: str
-    age: int
-    email: str
-    department_id: int
 
 
 class UserFilter(BaseFilter):
-    login: List[str]
-    login__n: List[str]
+    login: list[str]
+    login__n: list[str]
+    age__ge: int
     age__lt: int
-    age__gt: int
-    department_id: List[int]
-    department_id__n: List[int]
-    q: str = SearchField(target=["login", "name", "email"]) 
+    department_id: list[int]
+    q: str = SearchField(target=["login", "full_name", "email"])
 ```
 
-??? info
+By default, declared fields are not required. Consequently, `UserFilter()` is
+valid and a driver ignores every field that was not explicitly supplied:
 
-    Unlike `BaseModel`, all fields in `BaseFilter` are optional. 
-    This is probably the only major difference between filter models and pydantic models.
-    This behavior can be changed in the configuration,
-    see [`FilterConfigDict.optional`][pydantic_filters.FilterConfigDict.optional].
+```python
+filter_ = UserFilter(department_id=[3, 4], age__ge=18)
 
-    A `UserFilter` is equivalent to the following pydantic model:
+assert filter_.model_dump(exclude_unset=True) == {
+    "department_id": [3, 4],
+    "age__ge": 18,
+}
+```
 
-    ```python
-    class UserFilterEquivalent(BaseModel):
-        login: List[str] = None
-        login__n: List[str] = None
-        age__lt: int = None
-        age__gt: int = None
-        department_id: List[int] = None
-        department_id__n: List[int] = None
-        q: str = None 
-    ```
+To make one field required, use an ellipsis. To make every field follow normal
+Pydantic required-field semantics, set `optional=False` in `model_config`.
 
-    Any field can be made required, you just need to add `Ellipsis`: 
-    
-    ```python
-    id: int = ...
-    ```
+```python
+class RequiredFilter(BaseFilter):
+    model_config = {**BaseFilter.model_config, "optional": False}
 
-There are seven filters defined in `UserFilter`:
+    tenant_id: int
 
-- `login` - list of include strings.
-- `login__n` - list of excluding strings.
-- `age__lt` - maximum age.
-- `age__gt` - minimum age.
-- `department_id` - list of including numbers.
-- `department_id__n` - list of excluding numbers.
-- `q` - search field by login, name or e-mail.
 
-The `UserFilter(department_id=[3, 4], age__gt=18)` condition will be interpreted as:
+class PartlyRequiredFilter(BaseFilter):
+    tenant_id: int = ...
+    name: str
+```
 
-> All users over 18 years of age from department number 3 OR 4.
+## Operators and suffixes
 
-As you may have already noticed, how a field will be filtered is determined 
-by the field suffix and the type annotation:
+A field suffix determines its operation. With the default `__` delimiter, the
+built-in suffixes are:
 
-- `login: str` ~ `login = value`
-- `login: List[str]` ~ `login IN (value1, value2, ...)`
-- `login__n: List[str]` ~ `login NOT IN (value1, value2, ...)`
-- `age__gt: int` ~ `age >= value`
-- `age__gt: List[int]` ~ `age >= value1 OR age >= value2 OR ...`
+| Operation | Suffixes | Scalar SQL | Sequence SQL |
+| --- | --- | --- | --- |
+| Equal | `eq` or no suffix | `column = value` | `column IN (...)` |
+| Not equal | `n`, `ne`, `neq` | `column != value` | `column NOT IN (...)` |
+| Is null | `null`, `isnull` | `IS NULL` when true, otherwise `IS NOT NULL` | — |
+| Greater than | `gt` | `column > value` | conditions joined with `OR` |
+| Greater than or equal | `ge`, `gte` | `column >= value` | conditions joined with `OR` |
+| Less than | `lt` | `column < value` | conditions joined with `OR` |
+| Less than or equal | `le`, `lte` | `column <= value` | conditions joined with `OR` |
+| `LIKE` | `l`, `like` | `column LIKE value` | conditions joined with `OR` |
+| `ILIKE` | `il`, `ilike` | `column ILIKE value` | conditions joined with `OR` |
+
+For example:
+
+```python
+class ProductFilter(BaseFilter):
+    id: list[int]            # id IN (...)
+    id__n: list[int]         # id NOT IN (...)
+    price__gte: int          # price >= value
+    price__lt: int           # price < value
+    archived_at__null: bool  # archived_at IS NULL / IS NOT NULL
+```
+
+The complete operation enum is [`FilterType`][pydantic_filters.FilterType].
+An unknown suffix is treated as part of the target name and uses
+`default_filter_type`.
 
 !!! note
 
-    The complete list of operators is defined in [`FilterType`][pydantic_filters.FilterType].
+    The table describes the bundled SQLAlchemy driver. A different driver may
+    translate the same filter metadata differently.
 
-!!! tip
+## Search fields
 
-    You can override the available suffixes and their associated operators in the model configuration
-    [`FilterConfigDict.suffixes_map`][pydantic_filters.FilterConfigDict.suffixes_map].
-
-## Related fields filtering
-
-Quite often there is a need to filter on related tables in the database. 
-In addition to the user schema, let's define the department schema:
+[`SearchField`][pydantic_filters.SearchField] applies one value to several
+targets and combines the target conditions with `OR`:
 
 ```python
-from typing import List
-
-from pydantic import BaseModel
-from pydantic_filters import BaseFilter, SearchField
-
-class DepartmentSchema(BaseModel):
-    id: int
-    chef_id: int
-
-
-class UserSchema(BaseModel):
-    id: int
-    login: str
-    full_name: str
-    age: int
-    email: str
-    department_id: int
-    
-    
-class DepartmentFilter(BaseFilter):
-    chef_id: List[int]
-    chef_id__n: List[int]
+from pydantic_filters import BaseFilter, SearchField, SearchType
 
 
 class UserFilter(BaseFilter):
-    login: List[str]
-    login__n: List[str]
-    age__lt: int
-    age__gt: int
-    department_id: List[int]
-    department_id__n: List[int]
-    q: str = SearchField(target=["login", "full_name", "email"])
-    # Related filter!
-    department: DepartmentFilter
+    q: str = SearchField(
+        target=["login", "full_name", "email"],
+        type_=SearchType.case_insensitive,
+    )
 ```
 
-??? warning
+For the SQLAlchemy driver, `UserFilter(q="alice")` produces a case-insensitive
+substring search equivalent to:
 
-    Support for filtering by related models depends on the driver you are using.
-    
-    For example, in the case of SQLAlchemy:
+```sql
+login ILIKE '%alice%' OR full_name ILIKE '%alice%' OR email ILIKE '%alice%'
+```
 
-    ```python
-    import sqlalchemy as sa
-    import sqlalchemy.orm as so
-    
-    class Base(so.DeclarativeBase):
-        pass
-    
-    
-    class Department(Base):
-        __tablename__ = "departments"
-        
-        id: so.Mapped[int] = so.mapped_column(primary_key=True)
-        chef_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("users.id"))
-    
-    
-    class User(Base):
-        __tablename__ = "users"
-        
-        id: so.Mapped[int] = so.mapped_column(primary_key=True)
-        login: so.Mapped[str]
-        full_name: so.Mapped[str]
-        age: so.Mapped[int]
-        email: so.Mapped[str]
-        department_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("departments.id"))
-    
-        department: so.Mapped[Department] = so.relationship(foreign_keys="User.department_id")
-    ```
+Use `SearchType.case_sensitive` for `LIKE`. A sequence-typed search field also
+combines its values with `OR`.
 
-    Here, `department_id` is defined as a foreign key 
-    and `department` provides access to the external table.
+## Nested filters
 
-## Fields
-
-The [`FilterField`][pydantic_filters.FilterField] and [`SearchField`][pydantic_filters.SearchField] 
-functions are used to customize and add metadata to model fields.
-
-### Target and Type setting
-
-When defining a filter for each field, the target attribute name (`target`) and the filter type (`type`) are defined.
-
-The following two filters are equivalents:
+A field annotated with another `BaseFilter` is a nested filter:
 
 ```python
-from typing import List
+class DepartmentFilter(BaseFilter):
+    manager_id: list[int]
 
-from pydantic_filters import BaseFilter, FilterField
+
+class UserFilter(BaseFilter):
+    login: list[str]
+    department: DepartmentFilter
+
+
+filter_ = UserFilter(
+    login=["alice", "bob"],
+    department=DepartmentFilter(manager_id=[5]),
+)
+```
+
+The SQLAlchemy driver expects the nested field name (`department`) to match a
+relationship on the current model. It adds the necessary joins and supports
+multiple nesting levels, self-referential relationships, many-to-many
+relationships, and composite foreign keys. See the [SQLAlchemy guide](sqlalchemy.md).
+
+## Custom fields
+
+[`FilterField`][pydantic_filters.FilterField] lets the public field name differ
+from the target column and accepts the same validation and schema arguments as
+Pydantic's `Field`:
+
+```python
+from pydantic_filters import BaseFilter, FilterField, FilterType
+
 
 class CarFilter(BaseFilter):
-    color: List[str]
-    color__n: List[str]
-
-
-class DirectCarFilter(BaseFilter):
-    color: List[str] = FilterField(target="color", type_="eq")
-    color__n: List[str] = FilterField(target="color", type_="ne")
+    include_color: list[str] = FilterField(target="color")
+    exclude_color: list[str] = FilterField(
+        target="color",
+        type_=FilterType.ne,
+        description="Colors to exclude",
+    )
+    minimum_year: int = FilterField(target="year", type_="ge", ge=1886)
 ```
 
-But sometimes it may be necessary to name fields differently:
-
-```python
-from typing import List
-
-from pydantic_filters import BaseFilter, FilterField
-
-class DirectCarFilter(BaseFilter):
-    include_color: List[str] = FilterField(target="color", type_="eq")
-    exclude_color: List[str] = FilterField(target="color", type_="ne")
-```
-
-### Pydantic compatibility
-
-Both functions [`FilterField`][pydantic_filters.FilterField] and [`SearchField`][pydantic_filters.SearchField]
-are compatible with the `pydantic.Field` and will work as if the arguments were passed directly to it.
+You may use Pydantic's `Field` directly when only validation or schema metadata
+is needed:
 
 ```python
 from pydantic import Field
-from pydantic_filters import BaseFilter, FilterField
+
 
 class UserFilter(BaseFilter):
-    age__lt: int = FilterField(gt=0, le=100)
-    age__gt: int = Field(gt=0, le=100)  # The same
+    age__lt: int = Field(gt=0, le=150)
 ```
-
-??? Tip
-    
-    The next option is also possible:
-
-    ```python
-    from typing import List
-    
-    from pydantic import Field
-    from pydantic_filters import BaseFilter, FilterField
-    
-    class CarFilter(BaseFilter):
-        exclude_color: List[str] = Field(
-            default=FilterField(target="color", type_="ne"), 
-            pattern="^#(?:[0-9a-fA-F]{3}){1,2}$",
-        )
-    ```
 
 ## Configuration
 
-As in pydantic, filter behavior can be controlled using [`FilterConfigDict`][pydantic_filters.FilterConfigDict].
+Set filter-specific options in `model_config`, alongside normal Pydantic
+configuration keys. [`FilterConfigDict`][pydantic_filters.FilterConfigDict]
+documents their types.
 
-### delimiter
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `delimiter` | `"__"` | Separates a target name from its suffix. Must contain at least two underscores. |
+| `optional` | `True` | Makes otherwise-required fields default to `None`. |
+| `default_filter_type` | `FilterType.eq` | Used when no known suffix or explicit type is present. |
+| `default_search_type` | `SearchType.case_insensitive` | Used when `SearchField` has no explicit type. |
+| `suffixes_map` | `get_suffixes_map()` | Maps recognized suffixes to filter operations. |
+| `sequence_types` | `(list, set)` | Annotation origins treated as multi-value fields. |
 
-Specifies the delimiter for the suffix. Defaults to `__`.
+When overriding the configuration, preserve inherited Pydantic and filter
+settings:
 
-### optional
+```python
+from pydantic_filters import BaseFilter, FilterType
 
-By default, all fields are optional.
-When `optional = False` the filter behavior does not differ from `pydantic.BaseModel`.
 
-### default_filter_type
+class CustomFilter(BaseFilter):
+    model_config = {
+        **BaseFilter.model_config,
+        "delimiter": "___",
+        "suffixes_map": {"before": FilterType.lt},
+        "sequence_types": (list, set, tuple),
+    }
 
-Filter type in case it cannot be “guessed”. The default is [`FilterType.eq`][pydantic_filters.FilterType.eq].
-
-### default_search_type
-
-Search type in case it cannot be “guessed”. 
-The default is [`SearchType.case_insensitive`][pydantic_filters.SearchType.case_insensitive].
-
-### suffixes_map
-
-Map the prefix mapping to the filter type. 
-Defined by the function [`get_suffixes_map`][pydantic_filters.get_suffixes_map].
-
-### sequence_types
-
-List of types whose annotations are taken as sequences. The default is `(list, set)`.
+    created_at___before: int
+```

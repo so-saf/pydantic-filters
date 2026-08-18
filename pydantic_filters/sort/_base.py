@@ -6,7 +6,7 @@ from ._types import SortByOrder
 
 
 class BaseSort(BaseModel):
-    """A base class for creating pydantic-based filters."""
+    """A Pydantic model describing a field and direction to sort by."""
 
     sort_by: Optional[str] = None
     """Field to sort by"""

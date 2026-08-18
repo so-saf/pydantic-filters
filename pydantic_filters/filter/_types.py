@@ -15,13 +15,13 @@ class FilterType(str, Enum):
     null = "null"
     """Is null"""
     gt = "gt"
-    """Grater than"""
+    """Greater than."""
     ge = "ge"
-    """Grater than or equal"""
+    """Greater than or equal."""
     lt = "lt"
-    """Lower than"""
+    """Less than."""
     le = "le"
-    """Lower than or equal"""
+    """Less than or equal."""
     like = "like"
     """Case-sensitive matching"""
     ilike = "ilike"
@@ -90,7 +90,8 @@ _suffixes_map: Dict[str, FilterType] = {
 
 def get_suffixes_map() -> Dict[str, FilterType]:
     """
-    Returns the standard set of synonyms defined in
-    [`_suffixes_map`][pydantic_filters.filter._types._suffixes_map]
+    Return a copy of the standard suffix-to-filter-type mapping.
+
+    Mutating the returned dictionary does not change the library defaults.
     """
     return deepcopy(_suffixes_map)
